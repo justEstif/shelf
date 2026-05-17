@@ -2,7 +2,15 @@
 
 A single-user file hosting app. Upload files, browse them publicly, manage them from an admin dashboard.
 
-Built with Go, Chi, Templ, Tailwind CSS, and HTMX.
+## Playground skill
+
+This repo includes the [playground](./skills/playground/) agent skill — it teaches your coding agent to build polished, self-contained HTML artifacts (specs, diagrams, prototypes, slide decks, reports) that you can drop straight into Shelf.
+
+Install with [skills](https://github.com/vercel-labs/skills):
+
+```bash
+npx skills add justEstif/shelf
+```
 
 ## Features
 

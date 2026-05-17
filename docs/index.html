@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelf — A single-user file hosting app</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='3' y='2' width='12' height='28' rx='1.5' fill='%23181d26'/><rect x='17' y='2' width='12' height='28' rx='1.5' fill='%23aa2d00'/></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-*: initial;
+      --color-ink: #181d26;
+      --color-primary: #181d26;
+      --color-canvas: #ffffff;
+      --color-surface-soft: #f8fafc;
+      --color-surface-strong: #e0e2e6;
+      --color-body: #333840;
+      --color-muted: #41454d;
+      --color-hairline: #dddddd;
+      --color-coral: #aa2d00;
+      --color-forest: #0a2e0e;
+      --color-cream: #f5e9d4;
+      --color-link: #1b61c9;
+      --color-on-dark: #ffffff;
+      --color-info: #254fad;
+      --color-info-border: #458fff;
+      --color-error: #aa2d00;
+      --color-warning: #d9a441;
+      --color-success: #006400;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 12px;
+      --radius-pill: 9999px;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    @custom-variant dark (&:where(.dark, .dark *));
+
+    .dark {
+      color-scheme: dark;
+      --color-canvas: #181d26;
+      --color-surface-soft: #1d1f25;
+      --color-surface-strong: #2a2d35;
+      --color-ink: #ffffff;
+      --color-body: #c8ccd4;
+      --color-muted: #8b909a;
+      --color-hairline: #2e3139;
+      --color-primary: #ffffff;
+      --color-on-dark: #181d26;
+      --color-link: #5b9cf5;
+      --color-info: #5b8df5;
+      --color-info-border: #6ba8ff;
+      --color-coral: #d44a2a;
+      --color-error: #d44a2a;
+      --color-warning: #e8b84a;
+      --color-success: #39bf45;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in { animation: fade-in 0.6s ease-out both; }
+    .animate-fade-in-delay { animation: fade-in 0.6s ease-out 0.15s both; }
+    .animate-fade-in-delay-2 { animation: fade-in 0.6s ease-out 0.3s both; }
+  </style>
+  <script>
+    (function(){var t=localStorage.getItem('shelf-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})();
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+
+<body class="min-h-screen bg-canvas text-body font-sans antialiased" x-data="{ copied: false }">
+
+  <!-- Nav -->
+  <nav class="h-16 bg-canvas border-b border-hairline">
+    <div class="max-w-screen-xl mx-auto px-6 h-full flex items-center justify-between">
+      <a href="https://github.com/justEstif/shelf" class="text-xl font-medium text-ink">📚 Shelf</a>
+      <div class="flex items-center gap-4">
+        <a href="https://github.com/justEstif/shelf" class="text-sm text-body">GitHub</a>
+        <button
+          @click="document.documentElement.classList.toggle('dark');localStorage.setItem('shelf-theme',document.documentElement.classList.contains('dark')?'dark':'light')"
+          class="ml-2 w-8 h-8 flex items-center justify-center rounded-md text-muted hover:text-ink"
+          title="Toggle theme">
+          <span class="inline dark:hidden">🌙</span>
+          <span class="hidden dark:inline">☀️</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="max-w-screen-xl mx-auto px-6 pt-24 pb-16">
+    <div class="max-w-2xl animate-fade-in">
+      <h1 class="text-5xl font-medium text-ink leading-tight tracking-tight">
+        Your files.<br>
+        <span class="text-coral">One binary.</span>
+      </h1>
+      <p class="mt-6 text-lg text-muted leading-relaxed max-w-lg">
+        A single-user file hosting app. Upload files, browse them publicly, manage from a dashboard. Ships as one self-contained Go binary with zero runtime dependencies.
+      </p>
+      <div class="mt-8 flex items-center gap-4">
+        <a href="https://github.com/justEstif/shelf" class="bg-primary text-on-dark font-medium rounded-lg px-6 py-3 text-sm active:opacity-90">View on GitHub</a>
+        <button
+          @click="navigator.clipboard.writeText('docker run -p 3000:3000 -e SHELF_PASSWORD=secret -e CSRF_KEY=this-is-exactly-32-bytes-long-x! -v shelf-pages:/shelf/pages -v shelf-data:/shelf/data ghcr.io/justestif/shelf'); copied = true; setTimeout(() => copied = false, 2000)"
+          class="bg-canvas border border-hairline text-ink font-medium rounded-lg px-6 py-3 text-sm active:bg-surface-soft">
+          <span x-show="!copied">Copy docker run</span>
+          <span x-show="copied">Copied!</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="max-w-screen-xl mx-auto px-6 py-16 border-t border-hairline">
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="animate-fade-in">
+        <div class="w-10 h-10 flex items-center justify-center rounded-md bg-surface-soft text-ink mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <h3 class="text-lg font-medium text-ink mb-2">Public file browser</h3>
+        <p class="text-sm text-muted leading-relaxed">Browse and download files, navigate folders. Clean, minimal interface that works on any device.</p>
+      </div>
+      <div class="animate-fade-in-delay">
+        <div class="w-10 h-10 flex items-center justify-center rounded-md bg-surface-soft text-ink mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3 class="text-lg font-medium text-ink mb-2">Single binary, zero deps</h3>
+        <p class="text-sm text-muted leading-relaxed">Static files embedded. No Node.js, no npm, no runtime. Download the binary, set a password, run. Or pull the Docker image.</p>
+      </div>
+      <div class="animate-fade-in-delay-2">
+        <div class="w-10 h-10 flex items-center justify-center rounded-md bg-surface-soft text-ink mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </div>
+        <h3 class="text-lg font-medium text-ink mb-2">JSON API</h3>
+        <p class="text-sm text-muted leading-relaxed">Upload, list, and delete files via Bearer token auth. Script your workflow with curl or any HTTP client.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Signature band -->
+  <section class="bg-coral text-on-dark">
+    <div class="max-w-screen-xl mx-auto px-6 py-16">
+      <div class="max-w-lg">
+        <h2 class="text-3xl font-medium leading-tight">One command. Up and running.</h2>
+        <div class="mt-6 bg-on-dark/10 rounded-lg p-4 font-mono text-sm leading-relaxed overflow-x-auto">
+          <div class="text-on-dark/60"># Docker</div>
+          <div>docker run -p 3000:3000 \</div>
+          <div class="pl-4">-e <span class="text-on-dark">SHELF_PASSWORD</span>=secret \</div>
+          <div class="pl-4">-e <span class="text-on-dark">CSRF_KEY</span>=this-is-exactly-32-bytes-long-x! \</div>
+          <div class="pl-4">-v shelf-pages:/shelf/pages \</div>
+          <div class="pl-4">-v shelf-data:/shelf/data \</div>
+          <div class="pl-4">ghcr.io/justestif/shelf</div>
+        </div>
+        <div class="mt-6 bg-on-dark/10 rounded-lg p-4 font-mono text-sm leading-relaxed overflow-x-auto">
+          <div class="text-on-dark/60"># Binary</div>
+          <div>wget https://github.com/justEstif/shelf/releases/latest/download/shelf-linux-amd64</div>
+          <div>chmod +x shelf-linux-amd64</div>
+          <div><span class="text-on-dark">SHELF_PASSWORD</span>=secret <span class="text-on-dark">CSRF_KEY</span>=this-is-exactly-32-bytes-long-x! ./shelf-linux-amd64</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech stack -->
+  <section class="max-w-screen-xl mx-auto px-6 py-16 border-t border-hairline">
+    <h2 class="text-2xl font-medium text-ink mb-8">Built with</h2>
+    <div class="flex flex-wrap gap-3">
+      <span class="bg-surface-soft text-ink text-sm font-medium px-4 py-2 rounded-md">Go</span>
+      <span class="bg-surface-soft text-ink text-sm font-medium px-4 py-2 rounded-md">Chi</span>
+      <span class="bg-surface-soft text-ink text-sm font-medium px-4 py-2 rounded-md">Templ</span>
+      <span class="bg-surface-soft text-ink text-sm font-medium px-4 py-2 rounded-md">Tailwind CSS</span>
+      <span class="bg-surface-soft text-ink text-sm font-medium px-4 py-2 rounded-md">HTMX</span>
+      <span class="bg-surface-soft text-ink text-sm font-medium px-4 py-2 rounded-md">Alpine.js</span>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-hairline">
+    <div class="max-w-screen-xl mx-auto px-6 py-8 flex items-center justify-between">
+      <span class="text-sm text-muted">MIT License</span>
+      <a href="https://github.com/justEstif/shelf" class="text-sm text-link">GitHub →</a>
+    </div>
+  </footer>
+
+</body>
+</html>

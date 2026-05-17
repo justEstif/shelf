@@ -23,7 +23,7 @@ templ Layout(title string) {
 				<a href="/" class="text-xl font-medium text-ink">📚 Shelf</a>
 				<div class="flex items-center gap-4">
 					<a href="/" class="text-sm text-body">Browse</a>
-					<a href="/admin" class="text-sm text-body">Admin</a>
+
 					<button onclick="document.documentElement.classList.toggle('dark');localStorage.setItem('shelf-theme',document.documentElement.classList.contains('dark')?'dark':'light')" class="ml-2 w-8 h-8 flex items-center justify-center rounded-md text-muted hover:text-ink" title="Toggle theme">
 						<span class="inline dark:hidden">🌙</span>
 						<span class="hidden dark:inline">☀️</span>

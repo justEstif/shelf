@@ -10,6 +10,7 @@ SHELF_PASSWORD = "change-me"
 SHELF_PAGES_DIR = "./pages"
 SHELF_DATA_DIR = "./data"
 CSRF_KEY = "this-is-exactly-32-bytes-long-x!"
+SHELF_VIEWER_PASSWORD = "change-me"
 
 [tasks.dev]
 description = "Start development server with live reload"

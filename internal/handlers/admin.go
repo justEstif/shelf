@@ -30,7 +30,26 @@ func (h *Handler) saveUploadedFiles(folder string, files []*multipart.FileHeader
 	var saved []saveResult
 	var errors []string
 
+	// Check volume quota once
+	usage, _ := storage.DiskUsage(h.cfg.PagesDir)
+	remaining := h.cfg.MaxVolumeSizeBytes() - usage
+	if remaining < 0 {
+		remaining = 0
+	}
+
 	for _, fh := range files {
+		// Per-file size check
+		if fh.Size > h.cfg.MaxFileSizeBytes() {
+			errors = append(errors, fmt.Sprintf("%s: exceeds max file size (%s)", fh.Filename, storage.FormatFileSize(h.cfg.MaxFileSizeBytes())))
+			continue
+		}
+
+		// Volume quota check
+		if fh.Size > remaining {
+			errors = append(errors, fmt.Sprintf("%s: exceeds storage quota (%s remaining)", fh.Filename, storage.FormatFileSize(remaining)))
+			continue
+		}
+
 		clean, err := storage.SanitizePath(h.cfg.PagesDir, filepath.Join(folder, fh.Filename))
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("%s: invalid path", fh.Filename))
@@ -71,6 +90,7 @@ func (h *Handler) saveUploadedFiles(folder string, files []*multipart.FileHeader
 			Filename: fh.Filename,
 			RelPath:  filepath.ToSlash(rel),
 		})
+		remaining -= fh.Size
 	}
 
 	return saved, errors
@@ -84,14 +104,15 @@ func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 	}
 	token := auth.GetToken(h.cfg.DataDir)
 	visibility := h.ms.GetAll()
-	if err := components.AdminPage(entries, token, csrf.Token(r), "", visibility).Render(r.Context(), w); err != nil {
+	usage, _ := storage.DiskUsage(h.cfg.PagesDir)
+	if err := components.AdminPage(entries, token, csrf.Token(r), "", visibility, usage, h.cfg.MaxVolumeSizeBytes()).Render(r.Context(), w); err != nil {
 		log.Printf("render admin page: %v", err)
 	}
 }
 
 // Upload handles HTMX file uploads. Returns an HTML partial on success.
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
+	if err := r.ParseMultipartForm(h.cfg.MaxFileSizeBytes()); err != nil {
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
@@ -181,7 +202,7 @@ func (h *Handler) APIListFiles(w http.ResponseWriter, r *http.Request) {
 
 // APIUpload handles file uploads via the JSON API.
 func (h *Handler) APIUpload(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
+	if err := r.ParseMultipartForm(h.cfg.MaxFileSizeBytes()); err != nil {
 		jsonError(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}

@@ -45,8 +45,11 @@ func List(dir string) ([]Entry, error) {
 }
 
 // Walk returns all entries recursively, with paths relative to root.
+// Directory sizes include all descendant files.
 func Walk(root string) ([]Entry, error) {
 	var entries []Entry
+	dirSizes := make(map[string]int64)
+
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -62,6 +65,16 @@ func Walk(root string) ([]Entry, error) {
 		if err != nil {
 			return err
 		}
+
+		if !d.IsDir() {
+			// Accumulate size into all parent directories
+			dir := filepath.Dir(rel)
+			for dir != "." {
+				dirSizes[dir] += info.Size()
+				dir = filepath.Dir(dir)
+			}
+		}
+
 		entries = append(entries, Entry{
 			Name:    d.Name(),
 			Path:    filepath.ToSlash(rel),
@@ -71,6 +84,18 @@ func Walk(root string) ([]Entry, error) {
 		})
 		return nil
 	})
+
+	// Apply computed directory sizes
+	if dirSizes != nil {
+		for i, e := range entries {
+			if e.IsDir {
+				if s, ok := dirSizes[e.Path]; ok {
+					entries[i].Size = s
+				}
+			}
+		}
+	}
+
 	return entries, err
 }
 
@@ -163,6 +188,25 @@ func FormatFileSize(size int64) string {
 	default:
 		return fmt.Sprintf("%d B", size)
 	}
+}
+
+// DiskUsage returns the total size of all files under dir.
+func DiskUsage(dir string) (int64, error) {
+	var total int64
+	err := filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			total += info.Size()
+		}
+		return nil
+	})
+	return total, err
 }
 
 func sortEntries(entries []Entry) {

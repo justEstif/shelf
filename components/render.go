@@ -16,8 +16,8 @@ func LoginPage(csrfToken string, errorMsg string) templ.Component {
 }
 
 // AdminPage returns the admin dashboard component.
-func AdminPage(entries []storage.Entry, token string, csrfToken string, uploadMsg string, visibility map[string]string) templ.Component {
-	return adminPage(entries, token, csrfToken, uploadMsg, visibility)
+func AdminPage(entries []storage.Entry, token string, csrfToken string, uploadMsg string, visibility map[string]string, diskUsage int64, maxVolume int64) templ.Component {
+	return adminPage(entries, token, csrfToken, uploadMsg, visibility, diskUsage, maxVolume)
 }
 
 // FileListPartial returns the file list HTMX partial component.

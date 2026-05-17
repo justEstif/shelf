@@ -1,10 +1,23 @@
 package components
 
 import (
+	"fmt"
+
 	"github.com/justestif/shelf/internal/storage"
 )
 
-templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadMsg string, visibility map[string]string) {
+func usagePercent(used, max int64) string {
+	if max <= 0 {
+		return "0.0"
+	}
+	pct := float64(used) / float64(max) * 100
+	if pct > 100 {
+		pct = 100
+	}
+	return fmt.Sprintf("%.1f", pct)
+}
+
+templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadMsg string, visibility map[string]string, diskUsage int64, maxVolume int64) {
 	@Layout("Admin") {
 		<div class="max-w-4xl mx-auto">
 			<h1 class="text-3xl font-medium text-ink mb-8">Admin</h1>
@@ -35,7 +48,13 @@ templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadM
 
 			<!-- Files section -->
 			<section class="mb-8">
-				<h2 class="text-lg font-medium text-ink mb-3">Files</h2>
+				<div class="flex items-center justify-between mb-3">
+					<h2 class="text-lg font-medium text-ink">Files</h2>
+					<span class="text-xs text-muted">{ storage.FormatFileSize(diskUsage) } / { storage.FormatFileSize(maxVolume) }</span>
+				</div>
+				<div class="w-full bg-surface-soft rounded-full h-1.5 mb-4">
+					<div class="bg-primary rounded-full h-1.5 transition-all" style="width: { usagePercent(diskUsage, maxVolume) }%"></div>
+				</div>
 				@fileListPartial(entries, csrfToken, "", visibility)
 			</section>
 
@@ -109,11 +128,7 @@ templ fileListPartial(entries []storage.Entry, csrfToken string, errMsg string, 
 							}
 							<div>
 								<span class="font-mono text-sm text-ink">{ entry.Path }</span>
-								if entry.IsDir {
-									<span class="text-xs text-muted ml-2">folder</span>
-								} else {
-									<span class="text-xs text-muted ml-2">{ storage.FormatFileSize(entry.Size) }</span>
-								}
+								<span class="text-xs text-muted ml-2">{ storage.FormatFileSize(entry.Size) }</span>
 							</div>
 						</div>
 						<div class="flex gap-3 items-center">

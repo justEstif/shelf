@@ -2,7 +2,7 @@ package components
 
 templ Layout(title string) {
 	<!DOCTYPE html>
-	<html lang="en" data-theme="light">
+	<html lang="en">
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -10,19 +10,17 @@ templ Layout(title string) {
 		<link rel="stylesheet" href="/static/css/tailwind.css"/>
 		<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta2" integrity="sha384-v+EMKtNUAo5enmQxBqgoU/FWvVvvZHvITNzurHSl4kzvCs94wdlgHUci1lliKWKz" crossorigin="anonymous"></script>
 	</head>
-	<body class="min-h-screen bg-base-200">
-		<div class="navbar bg-base-100 shadow-sm">
-			<div class="navbar-start">
-				<a href="/" class="btn btn-ghost text-xl">📚 Shelf</a>
+	<body class="min-h-screen bg-surface-soft text-body font-sans antialiased">
+		<nav class="h-16 bg-canvas border-b border-hairline">
+			<div class="max-w-screen-xl mx-auto px-6 h-full flex items-center justify-between">
+				<a href="/" class="text-xl font-medium text-ink">📚 Shelf</a>
+				<div class="flex items-center gap-6">
+					<a href="/" class="text-sm text-body">Browse</a>
+					<a href="/admin" class="text-sm text-body">Admin</a>
+				</div>
 			</div>
-			<div class="navbar-end">
-				<ul class="menu menu-horizontal px-1">
-					<li><a href="/">Browse</a></li>
-					<li><a href="/admin">Admin</a></li>
-				</ul>
-			</div>
-		</div>
-		<main class="container mx-auto px-4 py-8">
+		</nav>
+		<main class="max-w-screen-xl mx-auto px-6 py-12">
 			{ children... }
 		</main>
 	</body>

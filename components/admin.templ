@@ -7,58 +7,56 @@ import (
 templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadMsg string) {
 	@Layout("Admin") {
 		<div class="max-w-4xl mx-auto">
-			<h1 class="text-3xl font-bold mb-6">Admin</h1>
+			<h1 class="text-3xl font-medium text-ink mb-8">Admin</h1>
 
 			<!-- Upload section -->
-			<div class="card bg-base-100 shadow-sm mb-6">
-				<div class="card-body">
-					<h2 class="card-title text-lg">Upload</h2>
+			<section class="mb-8">
+				<h2 class="text-lg font-medium text-ink mb-3">Upload</h2>
+				<div class="bg-canvas border border-hairline rounded-lg p-6">
 					if uploadMsg != "" {
-						<div class="alert alert-warning mb-3">
-							<span>{ uploadMsg }</span>
+						<div class="text-sm text-warning bg-warning/10 rounded-md px-4 py-3 mb-4">
+							{ uploadMsg }
 						</div>
 					}
-					<form hx-post="/admin/upload" hx-target="#file-list" hx-swap="outerHTML" hx-encoding="multipart/form-data" class="space-y-3">
+					<form hx-post="/admin/upload" hx-target="#file-list" hx-swap="outerHTML" hx-encoding="multipart/form-data" class="space-y-4">
 						<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
-						<input type="text" name="folder" placeholder="Folder name (optional, for multi-file uploads)" class="input input-bordered w-full"/>
-						<input type="file" name="files" multiple class="file-input file-input-bordered w-full"/>
-						<button type="submit" class="btn btn-primary">Upload</button>
+						<input type="text" name="folder" placeholder="Folder name (optional, for multi-file uploads)" class="w-full h-11 px-4 text-sm bg-canvas border border-hairline rounded-sm focus:border-info-border focus:outline-none"/>
+						<input type="file" name="files" multiple class="block w-full text-sm text-muted file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-sm file:font-medium file:bg-surface-soft file:text-ink cursor-pointer"/>
+						<button type="submit" class="bg-primary text-on-dark font-medium rounded-lg px-6 py-3 text-sm active:bg-primary-active">Upload</button>
 					</form>
 
 					<!-- Drag & drop zone -->
-					<div id="drop-zone" class="border-2 border-dashed border-base-300 rounded-lg p-8 text-center text-base-content/50 mt-3 cursor-pointer hover:border-primary hover:text-primary transition-colors"
+					<div id="drop-zone" class="border-2 border-dashed border-hairline rounded-lg p-8 text-center text-muted mt-4 cursor-pointer"
 						onclick="document.querySelector('input[name=files]').click()">
 						Drop files here or click to browse
 					</div>
 				</div>
-			</div>
+			</section>
 
 			<!-- Files section -->
-			<div class="card bg-base-100 shadow-sm mb-6">
-				<div class="card-body">
-					<h2 class="card-title text-lg">Files</h2>
-					@fileListPartial(entries, csrfToken, "")
-				</div>
-			</div>
+			<section class="mb-8">
+				<h2 class="text-lg font-medium text-ink mb-3">Files</h2>
+				@fileListPartial(entries, csrfToken, "")
+			</section>
 
 			<!-- Token section -->
-			<div class="card bg-base-100 shadow-sm">
-				<div class="card-body">
-					<h2 class="card-title text-lg">API Token</h2>
-					<p class="text-sm text-base-content/60 mb-3">Use this token to authenticate API requests. Pass it as <code class="bg-base-200 px-1 rounded">Authorization: Bearer &lt;token&gt;</code></p>
+			<section class="mb-8">
+				<h2 class="text-lg font-medium text-ink mb-3">API Token</h2>
+				<div class="bg-canvas border border-hairline rounded-lg p-6">
+					<p class="text-sm text-muted mb-4">Use this token to authenticate API requests. Pass it as <code class="bg-surface-soft px-1.5 py-0.5 rounded-sm text-xs font-mono">Authorization: Bearer &lt;token&gt;</code></p>
 					@tokenPartial(token)
-					<form hx-post="/admin/token" hx-target="#token-display" hx-swap="outerHTML" class="mt-3">
+					<form hx-post="/admin/token" hx-target="#token-display" hx-swap="outerHTML" class="mt-4">
 						<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
-						<button type="submit" class="btn btn-warning btn-sm">Generate New Token</button>
+						<button type="submit" class="bg-canvas border border-hairline text-ink font-medium rounded-lg px-4 py-2 text-sm active:bg-surface-soft">Generate New Token</button>
 					</form>
 				</div>
-			</div>
+			</section>
 
 			<!-- Logout -->
-			<div class="mt-6">
+			<div class="mt-8">
 				<form method="post" action="/admin/logout">
 					<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
-					<button type="submit" class="btn btn-ghost btn-sm">Logout</button>
+					<button type="submit" class="text-sm text-muted">Logout</button>
 				</form>
 			</div>
 		</div>
@@ -70,13 +68,13 @@ templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadM
 				['dragenter', 'dragover'].forEach(evt => {
 					dropZone.addEventListener(evt, e => {
 						e.preventDefault();
-						dropZone.classList.add('border-info', 'text-info', 'bg-info/5');
+						dropZone.classList.add('border-info-border', 'text-info', 'bg-info/5');
 					});
 				});
 				['dragleave', 'drop'].forEach(evt => {
 					dropZone.addEventListener(evt, e => {
 						e.preventDefault();
-						dropZone.classList.remove('border-info', 'text-info', 'bg-info/5');
+						dropZone.classList.remove('border-info-border', 'text-info', 'bg-info/5');
 					});
 				});
 				dropZone.addEventListener('drop', e => {
@@ -93,40 +91,43 @@ templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadM
 templ fileListPartial(entries []storage.Entry, csrfToken string, errMsg string) {
 	<div id="file-list">
 		if errMsg != "" {
-			<div class="alert alert-warning mb-3">
-				<span class="text-sm">{ errMsg }</span>
+			<div class="text-sm text-warning bg-warning/10 rounded-md px-4 py-3 mb-4">
+				{ errMsg }
 			</div>
 		}
 		if len(entries) == 0 {
-			<p class="text-base-content/50 text-sm py-4">No files uploaded yet.</p>
-		}
-		for _, entry := range entries {
-			<div class="flex items-center justify-between p-3 bg-base-200 rounded-lg mb-2">
-				<div class="flex items-center gap-3">
-					if entry.IsDir {
-						<span>📁</span>
-					} else {
-						<span>📄</span>
-					}
-					<div>
-						<span class="font-mono text-sm">{ entry.Path }</span>
-						if entry.IsDir {
-							<span class="text-xs text-base-content/50 ml-2">folder</span>
-						} else {
-							<span class="text-xs text-base-content/50 ml-2">{ storage.FormatFileSize(entry.Size) }</span>
-						}
+			<p class="text-sm text-muted py-4">No files uploaded yet.</p>
+		} else {
+			<div class="bg-canvas border border-hairline rounded-lg divide-y divide-hairline">
+				for _, entry := range entries {
+					<div class="flex items-center justify-between px-4 py-3">
+						<div class="flex items-center gap-3">
+							if entry.IsDir {
+								<span class="text-muted">📁</span>
+							} else {
+								<span class="text-muted">📄</span>
+							}
+							<div>
+								<span class="font-mono text-sm text-ink">{ entry.Path }</span>
+								if entry.IsDir {
+									<span class="text-xs text-muted ml-2">folder</span>
+								} else {
+									<span class="text-xs text-muted ml-2">{ storage.FormatFileSize(entry.Size) }</span>
+								}
+							</div>
+						</div>
+						<div class="flex gap-3">
+							<a href={ templ.SafeURL("/" + entry.Path) } class="text-xs text-link" target="_blank">View</a>
+							<button class="text-xs text-error"
+								hx-delete={ "/admin/delete/" + entry.Path }
+								hx-target="#file-list"
+								hx-swap="outerHTML"
+								hx-headers={ `{ "X-CSRF-Token": "` + csrfToken + `" }` }>
+							Delete
+							</button>
+						</div>
 					</div>
-				</div>
-				<div class="flex gap-2">
-					<a href={ templ.SafeURL("/" + entry.Path) } class="btn btn-ghost btn-xs" target="_blank">View</a>
-					<button class="btn btn-ghost btn-xs text-error"
-						hx-delete={ "/admin/delete/" + entry.Path }
-						hx-target="#file-list"
-						hx-swap="outerHTML"
-						hx-headers={ `{ "X-CSRF-Token": "` + csrfToken + `" }` }>
-					Delete
-					</button>
-				</div>
+				}
 			</div>
 		}
 	</div>
@@ -135,11 +136,11 @@ templ fileListPartial(entries []storage.Entry, csrfToken string, errMsg string) 
 templ tokenPartial(token string) {
 	<div id="token-display">
 		if token != "" {
-			<div class="bg-base-200 rounded-lg p-3 font-mono text-sm break-all select-all">
+			<div class="bg-surface-soft rounded-md p-3 font-mono text-sm break-all select-all">
 				{ token }
 			</div>
 		} else {
-			<p class="text-base-content/50 text-sm">No token generated yet. Click generate to create one.</p>
+			<p class="text-sm text-muted">No token generated yet. Click generate to create one.</p>
 		}
 	</div>
 }

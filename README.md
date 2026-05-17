@@ -13,6 +13,7 @@ Built with Go, Chi, Templ, Tailwind CSS, and HTMX.
 - **CSRF protection** on all web forms
 - **Session auth** with password login
 - **API token** — generate, rotate, use for programmatic access
+- **Single binary** — static files embedded, zero file dependencies at runtime
 
 ## Quick start
 
@@ -38,6 +39,47 @@ mise run dev
 
 Open `http://localhost:3000`. Navigate to `/admin` and log in.
 
+## Docker
+
+```bash
+# Build
+docker build -t shelf .
+
+# Run
+docker run -d \
+  -p 3000:3000 \
+  -e SHELF_PASSWORD=your-password \
+  -e CSRF_KEY=must-be-exactly-32-bytes-long-ok \
+  -e SHELF_BASE_URL=http://your-host:3000 \
+  -v shelf-pages:/shelf/pages \
+  -v shelf-data:/shelf/data \
+  --name shelf \
+  shelf
+```
+
+Opens on `http://localhost:3000`. Uploads persist in the `shelf-pages` volume, API token in `shelf-data`.
+
+### docker compose
+
+```yaml
+services:
+  shelf:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      SHELF_PASSWORD: your-password
+      CSRF_KEY: must-be-exactly-32-bytes-long-ok
+      SHELF_BASE_URL: http://your-host:3000
+    volumes:
+      - shelf-pages:/shelf/pages
+      - shelf-data:/shelf/data
+
+volumes:
+  shelf-pages:
+  shelf-data:
+```
+
 ## Configuration
 
 All via environment variables:
@@ -51,14 +93,14 @@ All via environment variables:
 | `SHELF_DATA_DIR` | `./data` | Directory for app data (API token) |
 | `CSRF_KEY` | *(required)* | 32-byte key for CSRF protection |
 
-Set these in `mise.toml` under `[env]` for local dev, or as environment variables in production.
-
 ## Production build
 
 ```bash
 mise run build
 ./bin/shelf
 ```
+
+The binary has all static files embedded. Only needs env vars and the pages/data directories at runtime.
 
 ## API
 
@@ -83,18 +125,19 @@ curl -X DELETE -H "Authorization: Bearer <token>" \
 ## Project structure
 
 ```
-cmd/web/main.go          Entry point, router, middleware wiring
+cmd/web/
+  main.go              Entry point, router, middleware wiring
+  static/              Embedded static files (favicon, CSS)
 internal/
-  auth/                   Session management, password check, API tokens
-  config/                 Environment config
-  handlers/               HTTP handlers (public, admin, auth, API)
-  middleware/              Auth, CSRF, bearer token middleware
-  storage/                File operations, path sanitization
+  auth/                Session management, password check, API tokens
+  config/              Environment config
+  handlers/            HTTP handlers (public, admin, auth, API)
+  middleware/           Auth, CSRF, bearer token middleware
+  storage/             File operations, path sanitization
 components/
-  *.templ                 Templ templates (layout, login, admin, public index)
-  render.go               Go wrappers for templ components
-styles/input.css          Tailwind CSS config + DESIGN.md theme tokens
-static/css/               Built CSS (gitignored)
+  *.templ              Templ templates (layout, login, admin, public index)
+  render.go            Go wrappers for templ components
+styles/input.css       Tailwind CSS config + DESIGN.md theme tokens
 ```
 
 ## License

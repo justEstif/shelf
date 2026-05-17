@@ -1,10 +1,11 @@
 package main
 
 import (
+	"embed"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -14,6 +15,9 @@ import (
 	"github.com/justestif/shelf/internal/handlers"
 	customMiddleware "github.com/justestif/shelf/internal/middleware"
 )
+
+//go:embed static
+var staticFS embed.FS
 
 func main() {
 	cfg := config.Load()
@@ -54,12 +58,12 @@ func main() {
 	}
 	csrfMw := customMiddleware.SetupCSRF(csrfKey, cfg.IsProduction(), cfg.BaseURL)
 
-	// Static files (CSS — no CSRF needed)
-	staticDir, err := filepath.Abs("static")
-	if err != nil {
-		log.Fatalf("Failed to resolve static directory: %v", err)
-	}
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
+	// Static files (embedded CSS, favicon — no CSRF needed)
+	staticSub, _ := fs.Sub(staticFS, "static")
+	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
+	r.Get("/favicon.svg", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFileFS(w, r, staticFS, "static/favicon.svg")
+	})
 
 	// Login routes (CSRF, no auth required) — must be before the wildcard
 	r.Group(func(r chi.Router) {

@@ -40,6 +40,7 @@ Thumbs.db
 # Tailwind CSS standalone
 tailwindcss
 static/css/tailwind.css
+cmd/web/static/css/
 
 # Shelf data (not the pages themselves — those ARE the app)
 data/api_token

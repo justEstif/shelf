@@ -18,7 +18,7 @@ run = "air"
 [tasks.build]
 description = "Build production binary"
 run = """
-./tailwindcss -i styles/input.css -o static/css/tailwind.css --minify
+./tailwindcss -i styles/input.css -o cmd/web/static/css/tailwind.css --minify
 templ generate
 go build -o bin/shelf cmd/web/main.go
 """
@@ -26,6 +26,6 @@ go build -o bin/shelf cmd/web/main.go
 [tasks.setup]
 description = "Initial project setup"
 run = """
-mkdir -p pages data static/css
+mkdir -p pages data cmd/web/static/css
 templ generate
 """

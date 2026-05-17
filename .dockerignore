@@ -1,0 +1,10 @@
+bin/
+tmp/
+data/
+pages/
+static/css/
+.git/
+.air.toml
+mise.toml
+*.md
+.env

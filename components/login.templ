@@ -8,10 +8,19 @@ templ loginPage(csrfToken string, errorMsg string) {
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<title>Login — Shelf</title>
 		<link rel="stylesheet" href="/static/css/tailwind.css"/>
+		<script>
+			(function(){var t=localStorage.getItem('shelf-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})();
+		</script>
 	</head>
 	<body class="min-h-screen bg-surface-soft text-body font-sans antialiased flex items-center justify-center">
 		<div class="w-full max-w-sm bg-canvas border border-hairline rounded-lg p-8">
-			<h1 class="text-2xl font-medium text-ink text-center mb-6">📚 Shelf</h1>
+			<div class="flex items-center justify-between mb-6">
+				<h1 class="text-2xl font-medium text-ink">📚 Shelf</h1>
+				<button onclick="document.documentElement.classList.toggle('dark');localStorage.setItem('shelf-theme',document.documentElement.classList.contains('dark')?'dark':'light')" class="w-8 h-8 flex items-center justify-center rounded-md text-muted hover:text-ink" title="Toggle theme">
+					<span class="inline dark:hidden">🌙</span>
+					<span class="hidden dark:inline">☀️</span>
+				</button>
+			</div>
 			if errorMsg != "" {
 				<div class="text-sm text-coral bg-coral/10 rounded-md px-4 py-3 mb-4">
 					{ errorMsg }

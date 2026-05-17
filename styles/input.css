@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
    /* Reset default color palette — only DESIGN.md colors */
    --color-*: initial;
@@ -42,4 +44,41 @@
    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
       Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans",
       "Helvetica Neue", sans-serif;
+}
+
+/* ─── Dark mode — .dark class on <html> swaps tokens ─── */
+@layer base {
+   .dark {
+      color-scheme: dark;
+
+      /* Surfaces */
+      --color-canvas: #181d26;
+      --color-surface-soft: #1d1f25;
+      --color-surface-strong: #2a2d35;
+      --color-surface-dark: #0d1218;
+
+      /* Text */
+      --color-ink: #ffffff;
+      --color-body: #c8ccd4;
+      --color-muted: #8b909a;
+
+      /* Borders */
+      --color-hairline: #2e3139;
+
+      /* Buttons — invert */
+      --color-primary: #ffffff;
+      --color-primary-active: #e0e2e6;
+      --color-on-dark: #181d26;
+
+      /* Links */
+      --color-link: #5b9cf5;
+      --color-info: #5b8df5;
+      --color-info-border: #6ba8ff;
+
+      /* Semantic — brighter for dark backgrounds */
+      --color-coral: #d44a2a;
+      --color-error: #d44a2a;
+      --color-warning: #e8b84a;
+      --color-success: #39bf45;
+   }
 }

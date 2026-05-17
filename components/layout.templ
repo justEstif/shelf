@@ -8,15 +8,22 @@ templ Layout(title string) {
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<title>{ title } — Shelf</title>
 		<link rel="stylesheet" href="/static/css/tailwind.css"/>
+		<script>
+			(function(){var t=localStorage.getItem('shelf-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})();
+		</script>
 		<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta2" integrity="sha384-v+EMKtNUAo5enmQxBqgoU/FWvVvvZHvITNzurHSl4kzvCs94wdlgHUci1lliKWKz" crossorigin="anonymous"></script>
 	</head>
 	<body class="min-h-screen bg-surface-soft text-body font-sans antialiased">
 		<nav class="h-16 bg-canvas border-b border-hairline">
 			<div class="max-w-screen-xl mx-auto px-6 h-full flex items-center justify-between">
 				<a href="/" class="text-xl font-medium text-ink">📚 Shelf</a>
-				<div class="flex items-center gap-6">
+				<div class="flex items-center gap-4">
 					<a href="/" class="text-sm text-body">Browse</a>
 					<a href="/admin" class="text-sm text-body">Admin</a>
+					<button onclick="document.documentElement.classList.toggle('dark');localStorage.setItem('shelf-theme',document.documentElement.classList.contains('dark')?'dark':'light')" class="ml-2 w-8 h-8 flex items-center justify-center rounded-md text-muted hover:text-ink" title="Toggle theme">
+						<span class="inline dark:hidden">🌙</span>
+						<span class="hidden dark:inline">☀️</span>
+					</button>
 				</div>
 			</div>
 		</nav>

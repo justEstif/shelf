@@ -39,12 +39,11 @@ Thumbs.db
 
 # Tailwind CSS standalone
 tailwindcss
-daisyui.mjs
-daisyui-theme.mjs
 static/css/tailwind.css
 
 # Shelf data (not the pages themselves — those ARE the app)
 data/api_token
 
-# Plan (not source)
-shelf-plan.html
+# Working files
+plan.md
+DESIGN.md

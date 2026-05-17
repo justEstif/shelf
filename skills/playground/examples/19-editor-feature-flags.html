@@ -1,0 +1,337 @@
+<!doctype html>
+<html x-data lang="en" x-bind:class="{ dark: $store.theme.dark }">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acme — flags.production.json</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+  @theme {
+    --color-ivory: #FAF9F5;
+    --color-slate-dark: #141413;
+    --color-clay: #D97757;
+    --color-clay-d: #B85C3E;
+    --color-oat: #E3DACC;
+    --color-olive: #788C5D;
+    --color-gray-50: #F0EEE6;
+    --color-gray-200: #D1CFC5;
+    --color-gray-500: #87867F;
+    --color-gray-800: #3D3D3A;
+  }
+  [x-cloak] { display: none; }
+
+  /* Toggle switch — requires ::after pseudo */
+  .toggle { position: relative; flex: none; width: 38px; height: 22px; margin-top: 1px; }
+  .toggle input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+  .toggle .track { position: absolute; inset: 0; background: #D1CFC5; border-radius: 999px; transition: background 160ms ease; pointer-events: none; }
+  .toggle .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(20,20,19,0.18); transition: transform 160ms ease; }
+  .toggle input:checked + .track { background: #788C5D; }
+  .toggle input:checked + .track::after { transform: translateX(16px); }
+  .toggle input:focus-visible + .track { outline: 2px solid #141413; outline-offset: 2px; }
+  :where(.dark, .dark *) .toggle .track { background: #4b5563; }
+
+  /* Diff color lines */
+  .diff-minus { color: #87867F; }
+  .diff-plus  { color: #788C5D; }
+  .diff-empty { color: #87867F; }
+  :where(.dark, .dark *) .diff-minus { color: #9ca3af; }
+  :where(.dark, .dark *) .diff-plus  { color: #86efac; }
+  :where(.dark, .dark *) .diff-empty { color: #6b7280; }
+</style>
+<script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="bg-ivory text-slate-dark font-sans text-sm leading-relaxed m-0 dark:bg-slate-dark dark:text-ivory">
+<button @click="$store.theme.toggle()"
+        class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+        :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+        x-text="$store.theme.dark ? '☀' : '☾'">
+</button>
+<div class="max-w-[1080px] mx-auto px-8 pt-12 pb-16" x-data="featureFlags()" x-cloak>
+
+  <header class="mb-7">
+    <div class="font-mono text-[11px] tracking-[0.08em] uppercase text-gray-500">Acme / editor / feature-flags</div>
+    <h1 class="font-serif font-medium text-[30px] tracking-tight mt-1.5 mb-1">flags.production.json</h1>
+    <p class="text-gray-500 max-w-[600px]">A form-based editor for the production feature-flag config.
+      Toggle flags, fix dependency warnings as they surface, then copy out
+      only the lines that changed.</p>
+  </header>
+
+  <!-- Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+
+    <!-- Warning banner (spans full width) -->
+    <div
+      x-show="warnCount > 0"
+      x-transition
+      class="lg:col-span-2 flex items-baseline gap-2 px-3.5 py-2.5 border-[1.5px] border-[#E8C2AE] bg-[#F8E9E0] text-clay-d rounded-[10px] text-[13px] dark:bg-orange-900/20 dark:border-orange-700/50 dark:text-orange-300">
+      <span class="text-[13px] leading-none translate-y-px">&#9888;</span>
+      <span x-text="warnCount === 1 ? '1 flag is enabled without its prerequisite' : warnCount + ' flags are enabled without their prerequisites'"></span>
+    </div>
+
+    <!-- Flag groups -->
+    <div class="flex flex-col gap-4">
+      <template x-for="group in groups" :key="group.id">
+        <section class="bg-white border-[1.5px] border-gray-200 rounded-xl overflow-hidden dark:bg-gray-800 dark:border-gray-600">
+
+          <!-- Group header -->
+          <div class="font-mono text-[11px] tracking-[0.08em] uppercase text-gray-500 px-[18px] py-3 border-b-[1.5px] border-gray-50 flex justify-between gap-3 dark:border-gray-700">
+            <span class="text-gray-800 dark:text-gray-300" x-text="group.label"></span>
+            <span class="tracking-[0.04em]" x-text="group.flags.length + ' flags, ' + groupOnCount(group) + ' on'"></span>
+          </div>
+
+          <!-- Flag rows -->
+          <template x-for="flag in group.flags" :key="flag.key">
+            <div
+              class="flex items-start gap-4 px-[18px] py-3.5 border-b border-gray-50 last:border-b-0 border-l-[3px] transition-all dark:border-gray-700"
+              :class="{
+                'border-l-clay bg-[#FBF3EE] dark:bg-orange-900/20': isWarn(flag),
+                'border-l-transparent': !isWarn(flag),
+                'bg-transparent': !isWarn(flag) && !isChanged(flag)
+              }">
+
+              <!-- Toggle -->
+              <label class="toggle">
+                <input
+                  type="checkbox"
+                  :checked="flags[flag.key]"
+                  @change="flags[flag.key] = $event.target.checked"
+                  :aria-label="flag.key" />
+                <span class="track"></span>
+              </label>
+
+              <!-- Info -->
+              <div class="flex-1 min-w-0">
+                <div class="font-mono text-[13px] text-gray-800 dark:text-gray-300 flex items-center gap-[7px] flex-wrap">
+                  <!-- Changed dot -->
+                  <span
+                    x-show="isChanged(flag)"
+                    class="w-1.5 h-1.5 rounded-full bg-clay flex-none"></span>
+                  <span x-text="flag.key"></span>
+                  <!-- Rollout badge -->
+                  <span
+                    x-show="flag.rollout != null"
+                    class="font-mono text-[10px] tracking-[0.03em] text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-[7px] py-0.5 dark:bg-gray-700 dark:border-gray-600"
+                    x-text="flag.rollout + '%'"></span>
+                </div>
+                <div class="text-gray-500 text-[12.5px] mt-0.5" x-text="flag.desc"></div>
+                <!-- Requires chip -->
+                <div
+                  x-show="flag.requires"
+                  class="inline-flex items-baseline gap-[5px] mt-[7px] font-mono text-[11px] rounded-full px-[9px] py-0.5 border"
+                  :class="isWarn(flag) ? 'text-clay-d bg-[#F8E1D5] border-[#E8C2AE] dark:bg-orange-900/30 dark:border-orange-700/50 dark:text-orange-300' : 'text-gray-500 bg-gray-50 border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400'">
+                  <span x-show="isWarn(flag)">&#9888;</span>
+                  <span>requires <span x-text="flag.requires"></span></span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </section>
+      </template>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sticky top-6 bg-white border-[1.5px] border-gray-200 rounded-xl p-[18px] flex flex-col gap-3.5 dark:bg-gray-800 dark:border-gray-600">
+
+      <div>
+        <div class="font-mono text-[11px] tracking-[0.08em] uppercase text-gray-500">Pending changes</div>
+        <div class="font-serif font-medium text-[19px] tracking-tight mt-0.5">
+          <span x-text="diff.length + ' changed'"></span>
+          <span class="text-gray-200 dark:text-gray-600 mx-1">&middot;</span>
+          <span :class="warnCount ? 'text-clay-d' : ''" x-text="warnCount + ' warning' + (warnCount === 1 ? '' : 's')"></span>
+        </div>
+      </div>
+
+      <!-- Diff display -->
+      <pre class="m-0 font-mono text-[12px] leading-[1.7] bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-3 overflow-x-auto max-h-[320px] overflow-y-auto whitespace-pre dark:bg-gray-700 dark:border-gray-600"><template x-if="diff.length === 0"><span class="diff-empty">// no changes yet</span></template><template x-if="diff.length > 0"><span x-html="diffHtml()"></span></template></pre>
+
+      <!-- Buttons -->
+      <div class="flex flex-col gap-2">
+        <button
+          @click="copyDiff()"
+          :disabled="diff.length === 0"
+          :class="copyDiffCopied ? 'bg-olive' : (diff.length === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-ivory0' : 'bg-slate-dark hover:bg-gray-800')"
+          class="w-full border-none rounded-full font-mono text-[12px] px-4 py-[9px] cursor-pointer text-center transition-colors text-ivory"
+          x-text="copyDiffCopied ? 'Copied ✓' : 'Copy diff'"></button>
+
+        <button
+          @click="copyJson()"
+          :class="copyJsonCopied ? 'border-olive text-olive' : 'border-gray-200 text-gray-800 hover:border-gray-500 dark:border-gray-600 dark:text-gray-300 dark:hover:border-gray-400'"
+          class="w-full bg-transparent rounded-full font-mono text-[12px] px-4 py-[9px] cursor-pointer text-center transition-all border-[1.5px]"
+          x-text="copyJsonCopied ? 'Copied ✓' : 'Copy full JSON'"></button>
+
+        <button
+          @click="resetFlags()"
+          class="w-full bg-transparent text-gray-800 border-[1.5px] border-gray-200 rounded-full font-mono text-[12px] px-4 py-[9px] cursor-pointer text-center hover:border-gray-500 dark:text-gray-300 dark:border-gray-600 dark:hover:border-gray-400">Reset</button>
+      </div>
+    </aside>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+
+const GROUPS = [
+  {
+    id: "onboarding",
+    label: "Onboarding",
+    flags: [
+      { key: "onboarding.checklist_v2",       desc: "New three-step setup checklist replacing the modal tour.",                                  on: true },
+      { key: "onboarding.invite_nudge",        desc: "Nudge owners to invite teammates after creating their first project.",                       on: true },
+      { key: "onboarding.workspace_templates", desc: "Offer prebuilt workspace templates during signup.",                                          on: false, requires: "onboarding.checklist_v2" },
+      { key: "onboarding.skip_email_verify",   desc: "Let SSO-domain users in before email verification completes.",                               on: false }
+    ]
+  },
+  {
+    id: "sync",
+    label: "Sync engine",
+    flags: [
+      { key: "sync.delta_compression",  desc: "Send field-level deltas instead of full document snapshots.",               on: true },
+      { key: "sync.offline_queue_v2",   desc: "Persist offline edits to IndexedDB and replay on reconnect.",               on: false, requires: "sync.delta_compression" },
+      { key: "sync.presence_cursors",   desc: "Show live collaborator cursors in board and doc views.",                    on: true },
+      { key: "sync.conflict_banner",    desc: "Surface a merge banner instead of silently last-write-wins.",               on: false, requires: "sync.offline_queue_v2" },
+      { key: "sync.binary_ws_frames",   desc: "Switch the realtime channel to binary WebSocket frames.",                   on: false, rollout: 10 }
+    ]
+  },
+  {
+    id: "billing",
+    label: "Billing",
+    flags: [
+      { key: "billing.usage_meter",            desc: "Show per-seat usage meter on the workspace billing page.",                on: false },
+      { key: "billing.annual_discount_banner", desc: "Promote the annual-plan discount in the upgrade flow.",                  on: true },
+      { key: "billing.proration_preview",      desc: "Preview the prorated charge before confirming a plan change.",            on: false, requires: "billing.usage_meter" },
+      { key: "billing.dunning_emails_v3",      desc: "Use the rewritten dunning sequence with a 14-day grace window.",          on: true,  rollout: 25 }
+    ]
+  },
+  {
+    id: "internal",
+    label: "Internal",
+    flags: [
+      { key: "internal.shadow_traffic",   desc: "Mirror 1% of API traffic to the staging cluster for diffing.",                 on: false },
+      { key: "internal.query_tracing",    desc: "Attach OpenTelemetry spans to every Postgres query.",                          on: true },
+      { key: "internal.kill_switch_ui",   desc: "Expose the emergency kill-switch panel in the admin console.",                 on: true,  requires: "internal.query_tracing" }
+    ]
+  }
+];
+
+// Build flat initial state
+const INITIAL_STATE = {};
+GROUPS.forEach(g => g.flags.forEach(f => { INITIAL_STATE[f.key] = f.on; }));
+
+// Build a quick requires lookup: key → requiresKey
+const REQUIRES = {};
+GROUPS.forEach(g => g.flags.forEach(f => { if (f.requires) REQUIRES[f.key] = f.requires; }));
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function featureFlags() {
+  return {
+    groups: GROUPS,
+    // live toggle state
+    flags: Object.assign({}, INITIAL_STATE),
+    copyDiffCopied: false,
+    copyJsonCopied: false,
+    _timers: {},
+
+    // ---- computed ----
+    get diff() {
+      const out = [];
+      GROUPS.forEach(g => g.flags.forEach(f => {
+        if (this.flags[f.key] !== INITIAL_STATE[f.key]) {
+          out.push({ key: f.key, from: INITIAL_STATE[f.key], to: this.flags[f.key] });
+        }
+      }));
+      return out;
+    },
+
+    get warnCount() {
+      let n = 0;
+      GROUPS.forEach(g => g.flags.forEach(f => {
+        if (this.isWarn(f)) n++;
+      }));
+      return n;
+    },
+
+    isWarn(flag) {
+      return !!(flag.requires && this.flags[flag.key] && !this.flags[flag.requires]);
+    },
+
+    isChanged(flag) {
+      return this.flags[flag.key] !== INITIAL_STATE[flag.key];
+    },
+
+    groupOnCount(group) {
+      return group.flags.filter(f => this.flags[f.key]).length;
+    },
+
+    diffHtml() {
+      return this.diff.map(l =>
+        '<span class="diff-minus">- "' + esc(l.key) + '": ' + l.from + '</span>\n' +
+        '<span class="diff-plus">+ "' + esc(l.key) + '": ' + l.to + '</span>'
+      ).join('\n');
+    },
+
+    // ---- actions ----
+    resetFlags() {
+      this.flags = Object.assign({}, INITIAL_STATE);
+    },
+
+    writeClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+      }
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (_) {}
+      document.body.removeChild(ta);
+      return Promise.resolve();
+    },
+
+    flash(which) {
+      this[which] = true;
+      clearTimeout(this._timers[which]);
+      this._timers[which] = setTimeout(() => { this[which] = false; }, 1200);
+    },
+
+    copyDiff() {
+      if (!this.diff.length) return;
+      const text = this.diff.map(l =>
+        '- "' + l.key + '": ' + l.from + '\n' +
+        '+ "' + l.key + '": ' + l.to
+      ).join('\n');
+      this.writeClipboard(text).then(() => this.flash('copyDiffCopied'));
+    },
+
+    copyJson() {
+      let out = '{\n';
+      const allFlags = GROUPS.flatMap(g => g.flags);
+      allFlags.forEach((f, i) => {
+        const last = i === allFlags.length - 1;
+        out += '  "' + f.key + '": ' + this.flags[f.key] + (last ? '' : ',') + '\n';
+      });
+      out += '}';
+      this.writeClipboard(out).then(() => this.flash('copyJsonCopied'));
+    }
+  };
+}
+</script>
+</body>
+</html>

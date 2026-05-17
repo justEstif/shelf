@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en" x-data x-bind:class="{ dark: $store.theme.dark }">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acme — Cycle 14 triage</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+  @theme {
+    --color-ivory: #FAF9F5;
+    --color-slate-dark: #141413;
+    --color-clay: #D97757;
+    --color-clay-d: #B85C3E;
+    --color-oat: #E3DACC;
+    --color-olive: #788C5D;
+    --color-gray-50: #F0EEE6;
+    --color-gray-200: #D1CFC5;
+    --color-gray-500: #87867F;
+    --color-gray-800: #3D3D3A;
+  }
+  [x-cloak] { display: none; }
+
+  /* Tag color variants */
+  .tag-bug   { background: #F5E2D8; color: #B85C3E; border-color: #E8C9BA; }
+  .tag-feat  { background: #E8EDE0; color: #5C6F44; border-color: #CFDAC0; }
+  .tag-chore { background: #F0EEE6; color: #3D3D3A; border-color: #D1CFC5; }
+  .tag-debt  { background: #F0EEE6; color: #3D3D3A; border-color: #D1CFC5; }
+
+  /* Tag dark variants */
+  .dark .tag-bug   { background: rgba(176,74,63,.25); color: #f0a090; border-color: rgba(176,74,63,.4); }
+  .dark .tag-feat  { background: rgba(92,111,68,.25); color: #a8c890; border-color: rgba(92,111,68,.4); }
+  .dark .tag-chore { background: rgba(61,61,58,.5); color: #9ca3af; border-color: #4B5563; }
+  .dark .tag-debt  { background: rgba(61,61,58,.5); color: #9ca3af; border-color: #4B5563; }
+
+  /* Owner avatar colors */
+  .owner-o1 { background: #E3DACC; }
+  .owner-o2 { background: #DCE4D2; }
+  .owner-o3 { background: #ECD9CE; }
+  .owner-o4 { background: #F0EEE6; }
+</style>
+<script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="bg-ivory dark:bg-slate-dark text-slate-dark dark:text-ivory font-sans text-sm leading-relaxed m-0">
+<button @click="$store.theme.toggle()"
+        class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+        :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+        x-text="$store.theme.dark ? '&#9728;' : '&#9790;'">
+</button>
+<div class="max-w-[1180px] mx-auto px-8 pt-12 pb-16" x-data="triageBoard()" x-cloak>
+
+  <header class="mb-[22px]">
+    <div class="font-mono text-[11px] tracking-[0.08em] uppercase text-gray-500">Acme / editor / triage</div>
+    <h1 class="font-serif font-medium text-[30px] tracking-tight mt-1.5 mb-1">Cycle 14 triage</h1>
+    <p class="text-gray-500 max-w-[620px] m-0">
+      Twenty-four open Linear tickets, pre-sorted into a best guess. Drag them
+      across Now / Next / Later / Cut until the cut feels right, then copy the
+      result back into the planning doc as markdown.
+    </p>
+    <div class="font-mono text-[11px] text-gray-500 mt-2.5 before:content-['›'] before:text-clay before:mr-1.5">drag tickets between columns &nbsp;·&nbsp; click a tag to filter</div>
+  </header>
+
+  <!-- Toolbar -->
+  <div class="sticky top-0 z-10 bg-ivory dark:bg-slate-dark flex items-center gap-3.5 pt-3.5 pb-3 mb-3.5 border-b-[1.5px] border-gray-200 dark:border-gray-600">
+    <div class="font-mono text-[12px] text-gray-800 dark:text-gray-200 tracking-[0.01em]" x-html="summaryHtml()"></div>
+    <div class="flex-1"></div>
+    <button
+      x-show="activeFilter"
+      @click="clearFilter()"
+      class="font-mono text-[11px] text-clay-d bg-[#F5E6DE] dark:bg-orange-900/20 border-[1.5px] border-[#E8C9BA] dark:border-orange-700/40 rounded-full px-2.5 py-1 cursor-pointer hover:border-clay"
+      x-text="'filter: ' + activeFilter + ' ×'"></button>
+    <button @click="reset()" class="bg-transparent text-gray-800 dark:text-gray-200 border-[1.5px] border-gray-200 dark:border-gray-600 rounded-full font-mono text-[12px] px-4 py-[9px] cursor-pointer hover:border-gray-500 dark:hover:border-gray-400">Reset</button>
+    <button
+      @click="copy()"
+      :class="copied ? 'bg-olive border-olive' : 'bg-slate-dark dark:bg-gray-100 border-slate-dark dark:border-gray-100'"
+      class="text-ivory dark:text-gray-900 border-[1.5px] rounded-full font-mono text-[12px] px-4 py-[9px] cursor-pointer transition-colors"
+      x-text="copied ? 'Copied ✓' : 'Copy as markdown'"></button>
+  </div>
+
+  <!-- Board -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+    <template x-for="col in columns" :key="col.key">
+      <section
+        class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden flex flex-col min-h-[200px] transition-all"
+        :style="colBorderTop(col.key)"
+        :class="{ 'outline outline-2 outline-dashed outline-clay [outline-offset:-6px] bg-[#FBF6F2] dark:bg-gray-700': draggingOverCol === col.key }"
+        @dragover.prevent="onDragOver($event, col.key)"
+        @dragleave="onDragLeave($event, col.key)"
+        @drop.prevent="onDrop($event, col.key)">
+
+        <!-- Column header -->
+        <div class="sticky top-0 z-[1] bg-white dark:bg-gray-800 flex items-baseline gap-2 px-3.5 pt-3.5 pb-2.5 border-b-[1.5px] border-gray-50 dark:border-gray-700">
+          <h2 class="font-serif font-medium text-[17px] m-0 tracking-tight" x-text="col.label"></h2>
+          <span class="ml-auto font-mono text-[11px] text-gray-500 bg-gray-50 dark:bg-gray-700 border-[1.5px] border-gray-200 dark:border-gray-600 rounded-full px-2 py-0.5 min-w-[26px] text-center" x-text="colCount(col.key)"></span>
+        </div>
+
+        <!-- Cards -->
+        <div class="px-2.5 pt-2.5 pb-1.5 flex flex-col gap-2 flex-1 min-h-[60px]">
+          <template x-for="ticket in ticketsInCol(col.key)" :key="ticket.id">
+            <article
+              class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-200 dark:border-gray-600 rounded-lg px-[11px] pt-2.5 pb-[9px] cursor-grab select-none transition-all hover:border-gray-500 dark:hover:border-gray-400 hover:shadow-sm active:cursor-grabbing"
+              :class="{ 'opacity-[0.25]': activeFilter && ticket.tag !== activeFilter, 'opacity-40': dragId === ticket.id }"
+              draggable="true"
+              @dragstart="onDragStart($event, ticket.id)"
+              @dragend="onDragEnd()">
+
+              <div class="flex items-center gap-2 mb-[5px]">
+                <span class="font-mono text-[11px] text-gray-500 tracking-[0.01em]" x-text="ticket.id"></span>
+                <button
+                  type="button"
+                  class="tag font-mono text-[10px] uppercase tracking-[0.05em] rounded-full px-[7px] py-0.5 border cursor-pointer hover:brightness-95"
+                  :class="'tag-' + ticket.tag"
+                  @click.stop="toggleFilter(ticket.tag)"
+                  x-text="ticket.tag"></button>
+                <span class="ml-auto font-mono text-[10px] text-gray-500 border-[1.5px] border-gray-200 dark:border-gray-600 rounded w-[18px] h-[18px] flex items-center justify-center" x-text="ticket.est"></span>
+              </div>
+
+              <div class="text-[13px] leading-[1.35] text-slate-dark dark:text-ivory mb-[7px]" x-text="ticket.title"></div>
+
+              <div class="flex items-center gap-1.5">
+                <span
+                  class="owner font-mono text-[10px] w-5 h-5 rounded-full text-gray-800 flex items-center justify-center tracking-[0.02em]"
+                  :class="ownerClass(ticket.owner)"
+                  x-text="ticket.owner"></span>
+              </div>
+            </article>
+          </template>
+        </div>
+
+        <!-- Column footer -->
+        <div class="border-t-[1.5px] border-gray-50 dark:border-gray-700 px-3.5 pt-2 pb-3 font-mono text-[11px] text-gray-500 flex justify-between">
+          <span>estimate <b class="text-gray-800 dark:text-gray-200 font-semibold" x-text="ptsLabel(col.key)"></b></span>
+        </div>
+      </section>
+    </template>
+  </div>
+
+</div>
+
+<script>
+const COLUMNS = [
+  { key: 'now',   label: 'Now',   rationale: 'Blocking the v2.4 release or actively losing user data.' },
+  { key: 'next',  label: 'Next',  rationale: 'High-leverage and well-scoped — start the moment Now clears.' },
+  { key: 'later', label: 'Later', rationale: 'Real, but can ride to a future cycle without anyone noticing.' },
+  { key: 'cut',   label: 'Cut',   rationale: 'Not this quarter — close, dedupe, or push back to the requester.' }
+];
+
+const EST_PTS = { S: 1, M: 2, L: 3 };
+
+const INITIAL = [
+  { id: 'BIR-241', title: 'Fix sync conflict toast firing twice on reconnect', tag: 'bug',   est: 'M', owner: 'AK', col: 'now' },
+  { id: 'BIR-238', title: 'Comments lost when editing offline then reloading', tag: 'bug',   est: 'L', owner: 'JM', col: 'now' },
+  { id: 'BIR-252', title: 'Billing webhook 500s on annual → monthly downgrade', tag: 'bug',   est: 'M', owner: 'RS', col: 'now' },
+  { id: 'BIR-219', title: 'Migrate workspace permissions to new ACL table',    tag: 'debt',  est: 'L', owner: 'AK', col: 'now' },
+  { id: 'BIR-260', title: 'SSO login loop on Safari 17 with strict cookies',   tag: 'bug',   est: 'S', owner: 'TN', col: 'now' },
+
+  { id: 'BIR-244', title: 'Inline @-mention picker in doc comments',           tag: 'feat',  est: 'M', owner: 'JM', col: 'next' },
+  { id: 'BIR-231', title: 'Bulk-archive completed projects from the sidebar',  tag: 'feat',  est: 'S', owner: 'EL', col: 'next' },
+  { id: 'BIR-247', title: 'Activity feed: collapse repeated edit events',      tag: 'feat',  est: 'M', owner: 'TN', col: 'next' },
+  { id: 'BIR-228', title: 'Notification preferences per project',              tag: 'feat',  est: 'L', owner: 'EL', col: 'next' },
+  { id: 'BIR-255', title: 'Keyboard shortcut cheat-sheet overlay (⌘/)',        tag: 'feat',  est: 'S', owner: 'RS', col: 'next' },
+  { id: 'BIR-236', title: 'Empty-state illustrations for new workspaces',      tag: 'chore', est: 'S', owner: 'EL', col: 'next' },
+  { id: 'BIR-249', title: 'Audit log export to CSV for admins',                tag: 'feat',  est: 'M', owner: 'AK', col: 'next' },
+
+  { id: 'BIR-213', title: 'Dark mode pass on settings + billing pages',        tag: 'chore', est: 'M', owner: 'EL', col: 'later' },
+  { id: 'BIR-258', title: 'Slack integration: post on milestone close',        tag: 'feat',  est: 'M', owner: 'RS', col: 'later' },
+  { id: 'BIR-221', title: 'Replace moment.js with date-fns across web',        tag: 'debt',  est: 'L', owner: 'TN', col: 'later' },
+  { id: 'BIR-263', title: 'Drag-to-reorder columns on the board view',         tag: 'feat',  est: 'M', owner: 'JM', col: 'later' },
+  { id: 'BIR-209', title: 'Upgrade Postgres minor + reindex search vectors',   tag: 'chore', est: 'M', owner: 'AK', col: 'later' },
+  { id: 'BIR-251', title: 'Per-doc read receipts in the share dialog',         tag: 'feat',  est: 'L', owner: 'JM', col: 'later' },
+  { id: 'BIR-240', title: 'Onboarding checklist resurfaces after dismissal',   tag: 'bug',   est: 'S', owner: 'TN', col: 'later' },
+  { id: 'BIR-265', title: 'Add request-id to client error reports',            tag: 'debt',  est: 'S', owner: 'RS', col: 'later' },
+
+  { id: 'BIR-198', title: 'Custom emoji reactions on comments',                tag: 'feat',  est: 'M', owner: 'EL', col: 'cut' },
+  { id: 'BIR-204', title: 'Native Windows desktop wrapper',                    tag: 'feat',  est: 'L', owner: 'TN', col: 'cut' },
+  { id: 'BIR-217', title: 'AI summary of long comment threads',                tag: 'feat',  est: 'L', owner: 'JM', col: 'cut' },
+  { id: 'BIR-233', title: 'Public roadmap page with voting',                   tag: 'feat',  est: 'L', owner: 'RS', col: 'cut' }
+];
+
+const OWNER_CLASS = { AK: 'owner-o1', JM: 'owner-o2', RS: 'owner-o3', TN: 'owner-o4', EL: 'owner-o1' };
+const COL_BORDER  = { now: '#D97757', next: '#788C5D', later: '#87867F', cut: '#D1CFC5' };
+
+function triageBoard() {
+  return {
+    columns: COLUMNS,
+    tickets: INITIAL.map(t => Object.assign({}, t)),
+    activeFilter: null,
+    dragId: null,
+    draggingOverCol: null,
+    copied: false,
+    _copyTimer: null,
+
+    ticketsInCol(col) {
+      return this.tickets.filter(t => t.col === col);
+    },
+    colCount(col) {
+      return this.ticketsInCol(col).length;
+    },
+    ptsInCol(col) {
+      return this.ticketsInCol(col).reduce((s, t) => s + (EST_PTS[t.est] || 0), 0);
+    },
+    ptsLabel(col) {
+      const p = this.ptsInCol(col);
+      return p + ' pt' + (p === 1 ? '' : 's');
+    },
+    summaryHtml() {
+      return COLUMNS.map(c =>
+        '<b>' + this.colCount(c.key) + '</b>&nbsp;' + c.key
+      ).join('<span style="color:#D1CFC5;margin:0 4px">·</span>');
+    },
+    colBorderTop(key) {
+      return 'border-top: 3px solid ' + (COL_BORDER[key] || '#D1CFC5');
+    },
+    ownerClass(owner) {
+      return OWNER_CLASS[owner] || 'owner-o1';
+    },
+
+    // ---- drag ----
+    onDragStart(e, id) {
+      this.dragId = id;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', id);
+    },
+    onDragEnd() {
+      this.dragId = null;
+      this.draggingOverCol = null;
+    },
+    onDragOver(e, colKey) {
+      e.dataTransfer.dropEffect = 'move';
+      this.draggingOverCol = colKey;
+    },
+    onDragLeave(e, colKey) {
+      if (!e.currentTarget.contains(e.relatedTarget)) {
+        if (this.draggingOverCol === colKey) this.draggingOverCol = null;
+      }
+    },
+    onDrop(e, colKey) {
+      this.draggingOverCol = null;
+      if (!this.dragId) return;
+      const t = this.tickets.find(x => x.id === this.dragId);
+      if (t && t.col !== colKey) {
+        const fn = () => { t.col = colKey; };
+        document.startViewTransition ? document.startViewTransition(fn) : fn();
+      }
+      this.dragId = null;
+    },
+
+    // ---- filter ----
+    toggleFilter(tag) {
+      this.activeFilter = this.activeFilter === tag ? null : tag;
+    },
+    clearFilter() {
+      this.activeFilter = null;
+    },
+
+    // ---- export ----
+    buildMarkdown() {
+      const lines = ['# Acme — Cycle 14 triage', ''];
+      for (const c of COLUMNS) {
+        const rows = this.ticketsInCol(c.key);
+        const pts = rows.reduce((s, t) => s + (EST_PTS[t.est] || 0), 0);
+        lines.push('## ' + c.label + ' (' + rows.length + ' · ' + pts + ' pts)', '');
+        lines.push('_' + c.rationale + '_', '');
+        rows.forEach(t => lines.push('- **' + t.id + '** ' + t.title + ' — ' + t.tag + ', ' + t.est + ', ' + t.owner));
+        lines.push('');
+      }
+      return lines.join('\n');
+    },
+
+    copy() {
+      const md = this.buildMarkdown();
+      const flash = () => {
+        this.copied = true;
+        clearTimeout(this._copyTimer);
+        this._copyTimer = setTimeout(() => { this.copied = false; }, 1200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(md).then(flash, flash);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = md;
+        Object.assign(ta.style, { position: 'fixed', left: '-9999px' });
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (_) {}
+        document.body.removeChild(ta);
+        flash();
+      }
+    },
+
+    reset() {
+      const fn = () => {
+        this.tickets = INITIAL.map(t => Object.assign({}, t));
+        this.activeFilter = null;
+      };
+      document.startViewTransition ? document.startViewTransition(fn) : fn();
+    }
+  };
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,377 @@
+<!doctype html>
+<html x-data lang="en" x-bind:class="{ dark: $store.theme.dark }">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Background jobs — header illustrations</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+  @theme {
+    --color-ivory: #FAF9F5;
+    --color-slate-dark: #141413;
+    --color-clay: #D97757;
+    --color-oat: #E3DACC;
+    --color-olive: #788C5D;
+    --color-gray-150: #F0EEE6;
+    --color-gray-300: #D1CFC5;
+    --color-gray-500: #87867F;
+    --color-gray-700: #3D3D3A;
+    --color-gray-800: #252522;
+    --color-gray-900: #181816;
+    --font-serif: ui-serif, Georgia, "Times New Roman", serif;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [x-cloak] { display: none; }
+</style>
+<script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="bg-ivory dark:bg-slate-dark text-slate-dark dark:text-ivory font-sans antialiased py-16 px-6 pb-24">
+<div class="max-w-[760px] mx-auto">
+
+  <button @click="$store.theme.toggle()"
+          class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+          :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+          x-text="$store.theme.dark ? '☀' : '☾'">
+  </button>
+
+  <header class="mb-14">
+    <h1 class="font-serif font-medium text-[22px] md:text-[34px] tracking-[-0.01em] mb-2.5">Background jobs — header illustrations</h1>
+    <p class="text-[14px] leading-[1.6] text-gray-700 dark:text-gray-300 max-w-[560px]">
+      Three 720×320 hand-drawn SVGs for the Acme docs section on
+      background jobs. Flat fills, 1.5–2px strokes, palette-locked. Each
+      exports standalone via the button below it.
+    </p>
+    <div class="font-mono text-[11px] text-gray-500 dark:text-gray-400 mt-[18px]">720 × 320 · inline SVG · no external assets</div>
+  </header>
+
+  <!-- ============================================================
+       A — Queue
+       ============================================================ -->
+  <figure class="mb-[72px]">
+    <div class="border border-gray-300 dark:border-gray-600 rounded-[12px] overflow-hidden bg-ivory dark:bg-slate-dark">
+      <svg id="ill-queue" xmlns="http://www.w3.org/2000/svg" width="720" height="320" viewBox="0 0 720 320" style="display:block;width:100%;height:auto">
+        <defs>
+          <style>
+            .m { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; }
+            .s { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 12px; }
+          </style>
+          <marker id="qa" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+            <path d="M0,0 L0,8 L8,4 z" fill="#87867F"/>
+          </marker>
+        </defs>
+
+        <rect width="720" height="320" fill="#FAF9F5"/>
+
+        <!-- queue label -->
+        <text x="60" y="96" class="s" fill="#87867F">queue</text>
+
+        <!-- five job rects -->
+        <g>
+          <rect x="60"  y="110" width="70" height="100" rx="10" fill="#F0EEE6" stroke="#3D3D3A" stroke-width="1.5"/>
+          <text x="95"  y="164" text-anchor="middle" class="m" fill="#3D3D3A">job 5</text>
+
+          <rect x="140" y="110" width="70" height="100" rx="10" fill="#F0EEE6" stroke="#3D3D3A" stroke-width="1.5"/>
+          <text x="175" y="164" text-anchor="middle" class="m" fill="#3D3D3A">job 4</text>
+
+          <rect x="220" y="110" width="70" height="100" rx="10" fill="#F0EEE6" stroke="#3D3D3A" stroke-width="1.5"/>
+          <text x="255" y="164" text-anchor="middle" class="m" fill="#3D3D3A">job 3</text>
+
+          <rect x="300" y="110" width="70" height="100" rx="10" fill="#F0EEE6" stroke="#3D3D3A" stroke-width="1.5"/>
+          <text x="335" y="164" text-anchor="middle" class="m" fill="#3D3D3A">job 2</text>
+
+          <!-- head of queue, highlighted -->
+          <rect x="380" y="110" width="70" height="100" rx="10" fill="#D97757" stroke="#141413" stroke-width="2"/>
+          <text x="415" y="164" text-anchor="middle" class="m" fill="#FAF9F5">job 1</text>
+        </g>
+
+        <!-- arrow to worker -->
+        <line x1="458" y1="160" x2="522" y2="160" stroke="#87867F" stroke-width="1.5" marker-end="url(#qa)"/>
+
+        <!-- worker -->
+        <rect x="530" y="90" width="130" height="140" rx="10" fill="#E3DACC" stroke="#141413" stroke-width="2"/>
+        <text x="595" y="156" text-anchor="middle" class="m" fill="#141413">worker</text>
+        <text x="595" y="172" text-anchor="middle" class="m" fill="#87867F">pool=4</text>
+
+        <!-- annotations -->
+        <text x="415" y="234" text-anchor="middle" class="s" fill="#87867F">next to run</text>
+        <text x="60"  y="258" class="s" fill="#87867F">Jobs are pulled FIFO; the worker leases one at a time.</text>
+      </svg>
+    </div>
+    <figcaption
+      x-data="{
+        copied: false,
+        copy() {
+          const svg = document.getElementById('ill-queue');
+          navigator.clipboard.writeText(new XMLSerializer().serializeToString(svg))
+            .then(() => { this.copied = true; setTimeout(() => this.copied = false, 2000); });
+        }
+      }"
+      class="flex items-baseline justify-between gap-6 pt-[18px] px-1"
+    >
+      <div class="flex-1">
+        <div class="font-serif text-[19px] font-medium mb-1">Queue</div>
+        <div class="text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">For "How jobs are picked up" — intro page header.</div>
+      </div>
+      <button
+        @click="copy()"
+        class="flex-shrink-0 font-mono text-[11px] text-slate-dark dark:text-gray-100 bg-gray-150 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-[6px] px-3 py-[7px] cursor-pointer hover:bg-oat dark:hover:bg-gray-600 active:translate-y-px"
+        x-text="copied ? 'Copied!' : 'Copy SVG'"
+      ></button>
+    </figcaption>
+  </figure>
+
+  <!-- ============================================================
+       B — Retry with backoff
+       ============================================================ -->
+  <figure class="mb-[72px]">
+    <div class="border border-gray-300 dark:border-gray-600 rounded-[12px] overflow-hidden bg-ivory dark:bg-slate-dark">
+      <svg id="ill-retry" xmlns="http://www.w3.org/2000/svg" width="720" height="320" viewBox="0 0 720 320" style="display:block;width:100%;height:auto">
+        <defs>
+          <style>
+            .m { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; }
+            .s { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 12px; }
+          </style>
+        </defs>
+
+        <rect width="720" height="320" fill="#FAF9F5"/>
+
+        <!-- timeline axis -->
+        <line x1="60" y1="190" x2="660" y2="190" stroke="#D1CFC5" stroke-width="1.5"/>
+        <text x="60" y="214" class="s" fill="#87867F">t = 0</text>
+        <text x="660" y="214" text-anchor="end" class="s" fill="#87867F">time →</text>
+
+        <!-- attempt 1 (fail) -->
+        <circle cx="100" cy="190" r="8" fill="#FAF9F5" stroke="#D97757" stroke-width="2"/>
+        <line x1="96" y1="186" x2="104" y2="194" stroke="#D97757" stroke-width="1.5"/>
+        <line x1="104" y1="186" x2="96" y2="194" stroke="#D97757" stroke-width="1.5"/>
+        <text x="100" y="222" text-anchor="middle" class="m" fill="#3D3D3A">try 1</text>
+
+        <!-- attempt 2 (fail) -->
+        <circle cx="170" cy="190" r="8" fill="#FAF9F5" stroke="#D97757" stroke-width="2"/>
+        <line x1="166" y1="186" x2="174" y2="194" stroke="#D97757" stroke-width="1.5"/>
+        <line x1="174" y1="186" x2="166" y2="194" stroke="#D97757" stroke-width="1.5"/>
+        <text x="170" y="222" text-anchor="middle" class="m" fill="#3D3D3A">try 2</text>
+
+        <!-- attempt 3 (fail) -->
+        <circle cx="310" cy="190" r="8" fill="#FAF9F5" stroke="#D97757" stroke-width="2"/>
+        <line x1="306" y1="186" x2="314" y2="194" stroke="#D97757" stroke-width="1.5"/>
+        <line x1="314" y1="186" x2="306" y2="194" stroke="#D97757" stroke-width="1.5"/>
+        <text x="310" y="222" text-anchor="middle" class="m" fill="#3D3D3A">try 3</text>
+
+        <!-- attempt 4 (success) -->
+        <circle cx="590" cy="190" r="9" fill="#788C5D" stroke="#141413" stroke-width="1.5"/>
+        <path d="M585,190 L589,194 L596,185" fill="none" stroke="#FAF9F5" stroke-width="1.5" stroke-linecap="round"/>
+        <text x="590" y="222" text-anchor="middle" class="m" fill="#3D3D3A">try 4</text>
+
+        <!-- dashed backoff arcs -->
+        <path d="M 100 182 Q 135 130 170 182" fill="none" stroke="#87867F" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <text x="135" y="124" text-anchor="middle" class="m" fill="#87867F">+1s</text>
+
+        <path d="M 170 182 Q 240 110 310 182" fill="none" stroke="#87867F" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <text x="240" y="104" text-anchor="middle" class="m" fill="#87867F">+2s</text>
+
+        <path d="M 310 182 Q 450 80 590 182" fill="none" stroke="#87867F" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <text x="450" y="74" text-anchor="middle" class="m" fill="#87867F">+4s</text>
+
+        <!-- annotation -->
+        <text x="60" y="262" class="s" fill="#87867F">Each failure waits twice as long before re-queuing; jitter not pictured.</text>
+      </svg>
+    </div>
+    <figcaption
+      x-data="{
+        copied: false,
+        copy() {
+          const svg = document.getElementById('ill-retry');
+          navigator.clipboard.writeText(new XMLSerializer().serializeToString(svg))
+            .then(() => { this.copied = true; setTimeout(() => this.copied = false, 2000); });
+        }
+      }"
+      class="flex items-baseline justify-between gap-6 pt-[18px] px-1"
+    >
+      <div class="flex-1">
+        <div class="font-serif text-[19px] font-medium mb-1">Retry with backoff</div>
+        <div class="text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">For "Handling failures" — retry policy header.</div>
+      </div>
+      <button
+        @click="copy()"
+        class="flex-shrink-0 font-mono text-[11px] text-slate-dark dark:text-gray-100 bg-gray-150 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-[6px] px-3 py-[7px] cursor-pointer hover:bg-oat dark:hover:bg-gray-600 active:translate-y-px"
+        x-text="copied ? 'Copied!' : 'Copy SVG'"
+      ></button>
+    </figcaption>
+  </figure>
+
+  <!-- ============================================================
+       C — Fan-out
+       ============================================================ -->
+  <figure class="mb-[72px]">
+    <div class="border border-gray-300 dark:border-gray-600 rounded-[12px] overflow-hidden bg-ivory dark:bg-slate-dark">
+      <svg id="ill-fanout" xmlns="http://www.w3.org/2000/svg" width="720" height="320" viewBox="0 0 720 320" style="display:block;width:100%;height:auto">
+        <defs>
+          <style>
+            .m { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; }
+            .s { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 12px; }
+          </style>
+          <marker id="fa" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+            <path d="M0,0 L0,7 L7,3.5 z" fill="#87867F"/>
+          </marker>
+        </defs>
+
+        <rect width="720" height="320" fill="#FAF9F5"/>
+
+        <!-- source -->
+        <rect x="60" y="128" width="110" height="64" rx="10" fill="#E3DACC" stroke="#141413" stroke-width="2"/>
+        <text x="115" y="158" text-anchor="middle" class="m" fill="#141413">enqueue</text>
+        <text x="115" y="172" text-anchor="middle" class="m" fill="#87867F">batch()</text>
+
+        <!-- fan-out arrows -->
+        <line x1="170" y1="160" x2="296" y2="64"  stroke="#87867F" stroke-width="1.5" marker-end="url(#fa)"/>
+        <line x1="170" y1="160" x2="296" y2="128" stroke="#87867F" stroke-width="1.5" marker-end="url(#fa)"/>
+        <line x1="170" y1="160" x2="296" y2="192" stroke="#87867F" stroke-width="1.5" marker-end="url(#fa)"/>
+        <line x1="170" y1="160" x2="296" y2="256" stroke="#87867F" stroke-width="1.5" marker-end="url(#fa)"/>
+
+        <!-- four shard boxes -->
+        <g>
+          <rect x="300" y="44"  width="120" height="40" rx="10" fill="#F0EEE6" stroke="#3D3D3A" stroke-width="1.5"/>
+          <text x="360" y="69"  text-anchor="middle" class="m" fill="#3D3D3A">shard 0</text>
+
+          <rect x="300" y="108" width="120" height="40" rx="10" fill="#F0EEE6" stroke="#3D3D3A" stroke-width="1.5"/>
+          <text x="360" y="133" text-anchor="middle" class="m" fill="#3D3D3A">shard 1</text>
+
+          <rect x="300" y="172" width="120" height="40" rx="10" fill="#F0EEE6" stroke="#3D3D3A" stroke-width="1.5"/>
+          <text x="360" y="197" text-anchor="middle" class="m" fill="#3D3D3A">shard 2</text>
+
+          <rect x="300" y="236" width="120" height="40" rx="10" fill="#F0EEE6" stroke="#3D3D3A" stroke-width="1.5"/>
+          <text x="360" y="261" text-anchor="middle" class="m" fill="#3D3D3A">shard 3</text>
+        </g>
+
+        <!-- converge arrows to merge -->
+        <line x1="420" y1="64"  x2="546" y2="160" stroke="#87867F" stroke-width="1.5" marker-end="url(#fa)"/>
+        <line x1="420" y1="128" x2="546" y2="160" stroke="#87867F" stroke-width="1.5" marker-end="url(#fa)"/>
+        <line x1="420" y1="192" x2="546" y2="160" stroke="#87867F" stroke-width="1.5" marker-end="url(#fa)"/>
+        <line x1="420" y1="256" x2="546" y2="160" stroke="#87867F" stroke-width="1.5" marker-end="url(#fa)"/>
+
+        <!-- merge box -->
+        <rect x="550" y="128" width="110" height="64" rx="10" fill="#788C5D" stroke="#141413" stroke-width="2"/>
+        <text x="605" y="158" text-anchor="middle" class="m" fill="#FAF9F5">merge</text>
+        <text x="605" y="172" text-anchor="middle" class="m" fill="#E3DACC">await all</text>
+
+        <!-- annotations -->
+        <text x="232" y="42"  class="s" fill="#87867F">fan-out</text>
+        <text x="486" y="42"  text-anchor="end" class="s" fill="#87867F">fan-in</text>
+        <text x="60"  y="300" class="s" fill="#87867F">Parent job spawns N children, then blocks on a completion barrier.</text>
+      </svg>
+    </div>
+    <figcaption
+      x-data="{
+        copied: false,
+        copy() {
+          const svg = document.getElementById('ill-fanout');
+          navigator.clipboard.writeText(new XMLSerializer().serializeToString(svg))
+            .then(() => { this.copied = true; setTimeout(() => this.copied = false, 2000); });
+        }
+      }"
+      class="flex items-baseline justify-between gap-6 pt-[18px] px-1"
+    >
+      <div class="flex-1">
+        <div class="font-serif text-[19px] font-medium mb-1">Fan-out / fan-in</div>
+        <div class="text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">For "Batch and parallel work" — fan-out pattern header.</div>
+      </div>
+      <button
+        @click="copy()"
+        class="flex-shrink-0 font-mono text-[11px] text-slate-dark dark:text-gray-100 bg-gray-150 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-[6px] px-3 py-[7px] cursor-pointer hover:bg-oat dark:hover:bg-gray-600 active:translate-y-px"
+        x-text="copied ? 'Copied!' : 'Copy SVG'"
+      ></button>
+    </figcaption>
+  </figure>
+
+  <!-- ============================================================
+       Palette + usage notes
+       ============================================================ -->
+  <section class="border-t border-gray-300 dark:border-gray-600 pt-9 mt-2">
+    <h2 class="font-serif font-medium text-[19px] mb-[18px]">Palette &amp; rules</h2>
+
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-2.5 mb-8">
+      <div class="border border-gray-300 dark:border-gray-600 rounded-[8px] overflow-hidden bg-white dark:bg-gray-800">
+        <div class="h-11" style="background:#FAF9F5"></div>
+        <div class="p-[8px_10px_10px]">
+          <div class="text-[12px] text-gray-700 dark:text-gray-300">ivory</div>
+          <div class="font-mono text-[10px] text-gray-500 dark:text-gray-400">#FAF9F5</div>
+        </div>
+      </div>
+      <div class="border border-gray-300 dark:border-gray-600 rounded-[8px] overflow-hidden bg-white dark:bg-gray-800">
+        <div class="h-11" style="background:#141413"></div>
+        <div class="p-[8px_10px_10px]">
+          <div class="text-[12px] text-gray-700 dark:text-gray-300">slate</div>
+          <div class="font-mono text-[10px] text-gray-500 dark:text-gray-400">#141413</div>
+        </div>
+      </div>
+      <div class="border border-gray-300 dark:border-gray-600 rounded-[8px] overflow-hidden bg-white dark:bg-gray-800">
+        <div class="h-11" style="background:#D97757"></div>
+        <div class="p-[8px_10px_10px]">
+          <div class="text-[12px] text-gray-700 dark:text-gray-300">clay</div>
+          <div class="font-mono text-[10px] text-gray-500 dark:text-gray-400">#D97757</div>
+        </div>
+      </div>
+      <div class="border border-gray-300 dark:border-gray-600 rounded-[8px] overflow-hidden bg-white dark:bg-gray-800">
+        <div class="h-11" style="background:#788C5D"></div>
+        <div class="p-[8px_10px_10px]">
+          <div class="text-[12px] text-gray-700 dark:text-gray-300">olive</div>
+          <div class="font-mono text-[10px] text-gray-500 dark:text-gray-400">#788C5D</div>
+        </div>
+      </div>
+      <div class="border border-gray-300 dark:border-gray-600 rounded-[8px] overflow-hidden bg-white dark:bg-gray-800">
+        <div class="h-11" style="background:#E3DACC"></div>
+        <div class="p-[8px_10px_10px]">
+          <div class="text-[12px] text-gray-700 dark:text-gray-300">oat</div>
+          <div class="font-mono text-[10px] text-gray-500 dark:text-gray-400">#E3DACC</div>
+        </div>
+      </div>
+      <div class="border border-gray-300 dark:border-gray-600 rounded-[8px] overflow-hidden bg-white dark:bg-gray-800">
+        <div class="h-11" style="background:#F0EEE6"></div>
+        <div class="p-[8px_10px_10px]">
+          <div class="text-[12px] text-gray-700 dark:text-gray-300">gray-150</div>
+          <div class="font-mono text-[10px] text-gray-500 dark:text-gray-400">#F0EEE6</div>
+        </div>
+      </div>
+      <div class="border border-gray-300 dark:border-gray-600 rounded-[8px] overflow-hidden bg-white dark:bg-gray-800">
+        <div class="h-11" style="background:#D1CFC5"></div>
+        <div class="p-[8px_10px_10px]">
+          <div class="text-[12px] text-gray-700 dark:text-gray-300">gray-300</div>
+          <div class="font-mono text-[10px] text-gray-500 dark:text-gray-400">#D1CFC5</div>
+        </div>
+      </div>
+      <div class="border border-gray-300 dark:border-gray-600 rounded-[8px] overflow-hidden bg-white dark:bg-gray-800">
+        <div class="h-11" style="background:#87867F"></div>
+        <div class="p-[8px_10px_10px]">
+          <div class="text-[12px] text-gray-700 dark:text-gray-300">gray-500</div>
+          <div class="font-mono text-[10px] text-gray-500 dark:text-gray-400">#87867F</div>
+        </div>
+      </div>
+    </div>
+
+    <ul class="text-[13px] leading-[1.7] text-gray-700 dark:text-gray-300 list-none">
+      <li class="pl-[18px] relative mb-1.5 before:content-[''] before:absolute before:left-0 before:top-[0.65em] before:w-2 before:h-px before:bg-gray-500">Strokes are 1.5px for neutral boxes, 2px for emphasised containers.</li>
+      <li class="pl-[18px] relative mb-1.5 before:content-[''] before:absolute before:left-0 before:top-[0.65em] before:w-2 before:h-px before:bg-gray-500">All rectangles use <code>rx="10"</code>; no drop shadows or gradients.</li>
+      <li class="pl-[18px] relative mb-1.5 before:content-[''] before:absolute before:left-0 before:top-[0.65em] before:w-2 before:h-px before:bg-gray-500">Labels inside boxes are 11px mono; annotations outside are 12px sans, gray-500.</li>
+      <li class="pl-[18px] relative mb-1.5 before:content-[''] before:absolute before:left-0 before:top-[0.65em] before:w-2 before:h-px before:bg-gray-500">Clay marks "the thing in focus"; olive marks "success / done".</li>
+      <li class="pl-[18px] relative mb-1.5 before:content-[''] before:absolute before:left-0 before:top-[0.65em] before:w-2 before:h-px before:bg-gray-500">Each SVG carries its own <code>&lt;style&gt;</code> block so the download stands alone.</li>
+    </ul>
+  </section>
+
+</div>
+</body>
+</html>

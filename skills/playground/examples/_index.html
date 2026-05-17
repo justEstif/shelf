@@ -1,0 +1,449 @@
+<!doctype html>
+<html x-data lang="en" x-bind:class="{ dark: $store.theme.dark }">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Playground Examples</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @custom-variant dark (&:where(.dark, .dark *));
+    @theme {
+      --color-ivory:      #FAF9F5;
+      --color-slate-dark: #141413;
+      --color-clay:       #D97757;
+      --color-oat:        #E3DACC;
+      --color-olive:      #788C5D;
+      --color-gray-150:   #F0EEE6;
+      --color-gray-300:   #D1CFC5;
+      --color-gray-500:   #87867F;
+      --color-gray-700:   #3D3D3A;
+    --color-gray-800: #252522;
+    --color-gray-900: #181816;
+      --font-serif: Georgia, 'Times New Roman', serif;
+    }
+    [x-cloak] { display: none; }
+  </style>
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="bg-ivory text-slate-dark min-h-screen dark:bg-slate-dark dark:text-ivory">
+<button @click="$store.theme.toggle()"
+        class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+        :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+        x-text="$store.theme.dark ? '☀' : '☾'">
+</button>
+
+  <div x-data="{ cat: 'all' }">
+
+    <!-- ── Page header ── -->
+    <header class="max-w-6xl mx-auto px-6 pt-16 pb-10">
+      <p class="text-xs font-semibold tracking-widest uppercase text-olive mb-3">Examples gallery</p>
+      <h1 class="font-serif text-4xl font-normal text-slate-dark dark:text-ivory mb-4" style="font-family: Georgia, 'Times New Roman', serif;">Playground Examples</h1>
+      <p class="text-gray-500 text-base max-w-xl leading-relaxed">
+        Twenty self-contained HTML artifacts — explorations, code reviews, design systems, prototypes, diagrams, reports, and custom editors. Open any file directly in the browser; no server required.
+      </p>
+    </header>
+
+    <!-- ── Filter bar ── -->
+    <nav class="max-w-6xl mx-auto px-6 pb-10">
+      <div class="flex flex-wrap gap-2">
+
+        <button @click="cat = 'all'"
+          :class="cat === 'all' ? 'bg-clay text-ivory' : 'bg-gray-150 text-gray-700 hover:bg-oat dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 cursor-pointer">
+          All
+        </button>
+
+        <button @click="cat = 'exploration'"
+          :class="cat === 'exploration' ? 'bg-clay text-ivory' : 'bg-gray-150 text-gray-700 hover:bg-oat dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 cursor-pointer">
+          Exploration
+        </button>
+
+        <button @click="cat = 'codereview'"
+          :class="cat === 'codereview' ? 'bg-clay text-ivory' : 'bg-gray-150 text-gray-700 hover:bg-oat dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 cursor-pointer">
+          Code Review
+        </button>
+
+        <button @click="cat = 'design'"
+          :class="cat === 'design' ? 'bg-clay text-ivory' : 'bg-gray-150 text-gray-700 hover:bg-oat dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 cursor-pointer">
+          Design
+        </button>
+
+        <button @click="cat = 'prototyping'"
+          :class="cat === 'prototyping' ? 'bg-clay text-ivory' : 'bg-gray-150 text-gray-700 hover:bg-oat dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 cursor-pointer">
+          Prototyping
+        </button>
+
+        <button @click="cat = 'diagrams'"
+          :class="cat === 'diagrams' ? 'bg-clay text-ivory' : 'bg-gray-150 text-gray-700 hover:bg-oat dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 cursor-pointer">
+          Diagrams
+        </button>
+
+        <button @click="cat = 'decks'"
+          :class="cat === 'decks' ? 'bg-clay text-ivory' : 'bg-gray-150 text-gray-700 hover:bg-oat dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 cursor-pointer">
+          Decks
+        </button>
+
+        <button @click="cat = 'research'"
+          :class="cat === 'research' ? 'bg-clay text-ivory' : 'bg-gray-150 text-gray-700 hover:bg-oat dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 cursor-pointer">
+          Research
+        </button>
+
+        <button @click="cat = 'reports'"
+          :class="cat === 'reports' ? 'bg-clay text-ivory' : 'bg-gray-150 text-gray-700 hover:bg-oat dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 cursor-pointer">
+          Reports
+        </button>
+
+        <button @click="cat = 'editors'"
+          :class="cat === 'editors' ? 'bg-clay text-ivory' : 'bg-gray-150 text-gray-700 hover:bg-oat dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+          class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 cursor-pointer">
+          Editors
+        </button>
+
+      </div>
+    </nav>
+
+    <!-- ── Cards grid ── -->
+    <main class="max-w-6xl mx-auto px-6 pb-20">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        <!-- 01 -->
+        <div x-show="cat === 'all' || cat === 'exploration'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">01</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Exploration</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Three ways to implement debounced search</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Side-by-side code approaches with tradeoffs annotated inline.</p>
+          </div>
+          <a href="./01-exploration-code-approaches.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 02 -->
+        <div x-show="cat === 'all' || cat === 'exploration'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">02</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Exploration</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Visual design directions rendered live</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Multiple distinct UI directions for the same component, togglable in one page.</p>
+          </div>
+          <a href="./02-exploration-visual-designs.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 03 -->
+        <div x-show="cat === 'all' || cat === 'codereview'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">03</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Code Review</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Annotated pull request</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Diff view with margin notes and severity tags on each changed block.</p>
+          </div>
+          <a href="./03-code-review-pr.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 04 -->
+        <div x-show="cat === 'all' || cat === 'codereview'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">04</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Code Review</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Module map: package as boxes and arrows</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Dependency graph with the hot path highlighted and clickable module details.</p>
+          </div>
+          <a href="./04-code-understanding.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 05 -->
+        <div x-show="cat === 'all' || cat === 'design'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">05</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Design</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Living design system</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Tokens as swatches, copy-on-click for hex values, typography scale, spacing grid.</p>
+          </div>
+          <a href="./05-design-system.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 06 -->
+        <div x-show="cat === 'all' || cat === 'design'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">06</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Design</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Component variants</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">All sizes, states, and intents for a component family on one reference sheet.</p>
+          </div>
+          <a href="./06-component-variants.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 07 -->
+        <div x-show="cat === 'all' || cat === 'prototyping'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">07</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Prototyping</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Animation sandbox</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Sliders for duration, delay, and easing; see the result on a live element instantly.</p>
+          </div>
+          <a href="./07-prototype-animation.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 08 -->
+        <div x-show="cat === 'all' || cat === 'prototyping'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">08</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Prototyping</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Clickable flow: four linked screens</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Navigable prototype with transitions, back button, and state preserved across screens.</p>
+          </div>
+          <a href="./08-prototype-interaction.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 09 -->
+        <div x-show="cat === 'all' || cat === 'decks'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">09</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Decks</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Arrow-key slide deck, no build step</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Full-screen slides navigated with ← → keys; progress bar, speaker notes toggle.</p>
+          </div>
+          <a href="./09-slide-deck.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 10 -->
+        <div x-show="cat === 'all' || cat === 'diagrams'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">10</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Diagrams</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">SVG figure sheet</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Diagrams for a blog post; tweak colors, labels, or layout then copy the SVG source.</p>
+          </div>
+          <a href="./10-svg-illustrations.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 11 -->
+        <div x-show="cat === 'all' || cat === 'reports'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">11</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Reports</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Weekly status report</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">What shipped and what slipped this week, with a small inline velocity chart.</p>
+          </div>
+          <a href="./11-status-report.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 12 -->
+        <div x-show="cat === 'all' || cat === 'reports'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">12</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Reports</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Incident timeline</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Minute-by-minute event log, log excerpts, and a follow-up action checklist.</p>
+          </div>
+          <a href="./12-incident-report.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 13 -->
+        <div x-show="cat === 'all' || cat === 'diagrams'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">13</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Diagrams</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Annotated deploy pipeline flowchart</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Click any pipeline step to expand its description and failure modes.</p>
+          </div>
+          <a href="./13-flowchart-diagram.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 14 -->
+        <div x-show="cat === 'all' || cat === 'research'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">14</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Research</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Feature explainer</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">TL;DR upfront, collapsible steps, tabbed code snippets, and a FAQ accordion.</p>
+          </div>
+          <a href="./14-research-feature-explainer.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 15 -->
+        <div x-show="cat === 'all' || cat === 'research'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">15</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Research</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Concept explainer with live interactive ring</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Animated diagram, side-by-side comparison table, and a scannable glossary.</p>
+          </div>
+          <a href="./15-research-concept-explainer.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 16 -->
+        <div x-show="cat === 'all' || cat === 'exploration'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">16</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Exploration</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Implementation plan</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Milestones, data-flow diagram, wireframe mockups, and a risk/effort matrix in one doc.</p>
+          </div>
+          <a href="./16-implementation-plan.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 17 -->
+        <div x-show="cat === 'all' || cat === 'codereview'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">17</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Code Review</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">PR writeup: motivation and file-by-file tour</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Context, design decisions, file walk-through, and guidance on where to focus review.</p>
+          </div>
+          <a href="./17-pr-writeup.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 18 -->
+        <div x-show="cat === 'all' || cat === 'editors'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">18</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Editors</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Ticket triage board</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Drag items into Now / Next / Later / Cut columns, then copy the final ordering.</p>
+          </div>
+          <a href="./18-editor-triage-board.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 19 -->
+        <div x-show="cat === 'all' || cat === 'editors'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">19</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Editors</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Feature flag editor</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Toggle flags, see live dependency warnings, copy the diff of changes made.</p>
+          </div>
+          <a href="./19-editor-feature-flags.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+        <!-- 20 -->
+        <div x-show="cat === 'all' || cat === 'editors'"
+          class="bg-white border border-gray-300 rounded-xl p-6 flex flex-col gap-3 hover:border-clay transition-colors duration-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:border-clay">
+          <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs font-bold bg-clay text-ivory px-2 py-0.5 rounded">20</span>
+            <span class="text-xs font-semibold tracking-widest uppercase text-olive">Editors</span>
+          </div>
+          <div class="flex-1">
+            <h2 class="text-base font-semibold text-slate-dark dark:text-ivory mb-1.5 leading-snug" style="font-family: Georgia, 'Times New Roman', serif;">Prompt tuner</h2>
+            <p class="text-sm text-gray-500 leading-relaxed">Editable template on the left, live interpolated preview on the right, copy to clipboard.</p>
+          </div>
+          <a href="./20-editor-prompt-tuner.html" target="_blank"
+            class="self-start text-sm font-medium text-clay hover:underline">Open →</a>
+        </div>
+
+      </div><!-- /grid -->
+
+      <!-- Empty state when a category has no visible cards (shouldn't happen but just in case) -->
+      <p x-show="cat !== 'all' && cat !== 'exploration' && cat !== 'codereview' && cat !== 'design' && cat !== 'prototyping' && cat !== 'diagrams' && cat !== 'decks' && cat !== 'research' && cat !== 'reports' && cat !== 'editors'"
+        class="text-gray-500 text-sm py-12 text-center">
+        No examples in this category.
+      </p>
+
+    </main>
+
+    <!-- ── Footer ── -->
+    <footer class="border-t border-gray-300 dark:border-gray-600 max-w-6xl mx-auto px-6 py-8">
+      <p class="text-xs text-gray-500">
+        Each file is self-contained — open any HTML directly in the browser. No server, no build step.
+      </p>
+    </footer>
+
+  </div><!-- /x-data -->
+
+</body>
+</html>

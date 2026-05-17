@@ -1,0 +1,188 @@
+<!doctype html>
+<html x-data lang="en" class="m-0 bg-ivory dark:bg-slate-dark text-slate-dark dark:text-ivory font-sans text-sm leading-[1.55]" x-bind:class="{ dark: $store.theme.dark }">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acme — Sidebar drag-to-reorder</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+
+  @theme {
+    --color-ivory: #FAF9F5;
+    --color-slate-dark: #141413;
+    --color-clay: #D97757;
+    --color-oat: #E3DACC;
+    --color-olive: #788C5D;
+    --color-gray-150: #F0EEE6;
+    --color-gray-300: #D1CFC5;
+    --color-gray-500: #87867F;
+    --color-gray-700: #3D3D3A;
+    --color-gray-800: #252522;
+    --color-gray-900: #181816;
+  }
+  [x-cloak] { display: none; }
+  /* Drop indicator */
+  [data-drop-before="true"] {
+    box-shadow: 0 -2px 0 0 #D97757;
+  }
+  .notes li::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 16px;
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+    background: #D97757;
+  }
+  .questions li::marker {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: var(--color-olive);
+    font-weight: 600;
+  }
+</style>
+<script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="m-0">
+<button @click="$store.theme.toggle()"
+        class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+        :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+        x-text="$store.theme.dark ? '☀' : '☾'">
+</button>
+<div class="max-w-[1040px] mx-auto px-4 md:px-8 pt-12 pb-16">
+
+  <header class="mb-7">
+    <div class="font-mono text-[11px] tracking-[0.1em] uppercase text-gray-500 dark:text-gray-400">Acme / prototype / interaction</div>
+    <h1 class="font-serif font-medium text-[30px] tracking-[-0.01em] mt-1.5 mb-1">Sidebar drag-to-reorder</h1>
+    <p class="text-gray-500 dark:text-gray-400 max-w-[600px]">
+      Throwaway HTML so we can <em>feel</em> the reorder before porting it to
+      React. Native <code class="font-mono text-xs bg-gray-150 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 px-1 py-px rounded">dragstart / dragover / drop</code>,
+      ~40 lines of JS, no libraries. Grab a row by the dots and move it.
+    </p>
+  </header>
+
+  <div class="grid grid-cols-1 md:[grid-template-columns:300px_1fr] gap-7 items-start">
+
+    <div>
+      <nav class="w-[260px] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-[12px] py-3.5 px-2.5">
+        <div class="font-mono text-[10px] tracking-[0.1em] uppercase text-gray-500 dark:text-gray-400 px-2.5 pt-1 pb-2.5">Views</div>
+        <ul
+          class="relative list-none m-0 p-0"
+          x-data="{
+            items: [
+              {label:'Inbox', count:'14'},
+              {label:'Today', count:'3'},
+              {label:'Upcoming', count:'21'},
+              {label:'Projects', count:'8'},
+              {label:'Archive', count:''},
+              {label:'Trash', count:''},
+            ],
+            dragging: null,
+            dropIndex: null,
+            dragStart(idx, e) {
+              this.dragging = idx;
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', '');
+            },
+            dragOver(idx, e) {
+              e.preventDefault();
+              this.dropIndex = idx;
+            },
+            drop(idx, e) {
+              e.preventDefault();
+              if (this.dragging === null || this.dragging === idx) { this.cleanup(); return; }
+              const item = this.items.splice(this.dragging, 1)[0];
+              const insertAt = this.dragging < idx ? idx - 1 : idx;
+              this.items.splice(insertAt, 0, item);
+              this.cleanup();
+            },
+            cleanup() {
+              this.dragging = null;
+              this.dropIndex = null;
+            }
+          }"
+          @dragleave="if(!$el.contains($event.relatedTarget)) dropIndex=null"
+          @dragend="cleanup()">
+          <template x-for="(item, idx) in items" :key="item.label">
+            <li
+              draggable="true"
+              :class="{'opacity-35 rotate-2 cursor-grabbing bg-gray-150 dark:bg-gray-700': dragging===idx}"
+              class="drop-item group flex items-center gap-2.5 px-2.5 py-[9px] my-0.5 rounded-[8px] bg-white dark:bg-gray-800 cursor-grab select-none transition-all duration-[120ms] hover:bg-gray-150 dark:hover:bg-gray-700"
+              :data-drop-before="dropIndex===idx && dragging!==idx"
+              @dragstart="dragStart(idx, $event)"
+              @dragover="dragOver(idx, $event)"
+              @drop="drop(idx, $event)"
+              @dragend="cleanup()">
+              <span class="flex-none w-[10px] h-4 grid [grid-template-columns:repeat(2,3px)] [grid-template-rows:repeat(3,3px)] gap-[3px] [align-content:center]">
+                <i class="w-[3px] h-[3px] rounded-full bg-gray-300 dark:bg-gray-600 group-hover:bg-gray-700 dark:group-hover:bg-gray-300 not-italic transition-colors duration-[120ms]"></i>
+                <i class="w-[3px] h-[3px] rounded-full bg-gray-300 dark:bg-gray-600 group-hover:bg-gray-700 dark:group-hover:bg-gray-300 not-italic transition-colors duration-[120ms]"></i>
+                <i class="w-[3px] h-[3px] rounded-full bg-gray-300 dark:bg-gray-600 group-hover:bg-gray-700 dark:group-hover:bg-gray-300 not-italic transition-colors duration-[120ms]"></i>
+                <i class="w-[3px] h-[3px] rounded-full bg-gray-300 dark:bg-gray-600 group-hover:bg-gray-700 dark:group-hover:bg-gray-300 not-italic transition-colors duration-[120ms]"></i>
+                <i class="w-[3px] h-[3px] rounded-full bg-gray-300 dark:bg-gray-600 group-hover:bg-gray-700 dark:group-hover:bg-gray-300 not-italic transition-colors duration-[120ms]"></i>
+                <i class="w-[3px] h-[3px] rounded-full bg-gray-300 dark:bg-gray-600 group-hover:bg-gray-700 dark:group-hover:bg-gray-300 not-italic transition-colors duration-[120ms]"></i>
+              </span>
+              <span class="text-sm text-slate-dark dark:text-ivory" x-text="item.label"></span>
+              <span class="ml-auto font-mono text-[11px] text-gray-500 dark:text-gray-400" x-text="item.count"></span>
+            </li>
+          </template>
+        </ul>
+      </nav>
+      <p class="mt-[18px] font-mono text-[11px] text-gray-500 dark:text-gray-400">Order persists in the DOM only — refresh to reset.</p>
+    </div>
+
+    <div>
+
+      <section class="notes bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-[12px] py-[22px] px-6">
+        <h2 class="font-serif font-medium text-[18px] m-0 mb-1.5">What you're feeling</h2>
+        <p class="text-gray-500 dark:text-gray-400 text-[13px] m-0 mb-4">Design decisions baked into this prototype, so you can push back on them.</p>
+        <ul class="list-none m-0 p-0">
+          <li class="relative py-2.5 pl-[22px] border-t border-gray-150 dark:border-gray-700 text-[13px] text-gray-700 dark:text-gray-300 first:border-t-0">
+            <b class="text-slate-dark dark:text-ivory font-semibold">Drop indicator snaps to the nearest gap</b>, not the raw cursor Y.
+            It only moves when you cross a row's midpoint — feels more decisive,
+            less jittery.
+          </li>
+          <li class="relative py-2.5 pl-[22px] border-t border-gray-150 dark:border-gray-700 text-[13px] text-gray-700 dark:text-gray-300 first:border-t-0">
+            <b class="text-slate-dark dark:text-ivory font-semibold">Dragged row stays in place at 35% opacity</b> with a 2&deg; tilt.
+            Keeping the ghost in the list preserves your sense of where you
+            started; the tilt reads as "lifted."
+          </li>
+          <li class="relative py-2.5 pl-[22px] border-t border-gray-150 dark:border-gray-700 text-[13px] text-gray-700 dark:text-gray-300 first:border-t-0">
+            <b class="text-slate-dark dark:text-ivory font-semibold">Grip dots are the affordance, but the whole row is draggable.</b>
+            Dots darken on hover to teach the gesture without forcing a
+            tiny hit target.
+          </li>
+          <li class="relative py-2.5 pl-[22px] border-t border-gray-150 dark:border-gray-700 text-[13px] text-gray-700 dark:text-gray-300 first:border-t-0">
+            <b class="text-slate-dark dark:text-ivory font-semibold">No auto-scroll, no drop animation.</b> Left out on purpose so the
+            core feel is easy to judge — say the word and we add them next.
+          </li>
+        </ul>
+      </section>
+
+      <section class="questions mt-7 bg-oat dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-[12px] py-5 px-6">
+        <h2 class="font-serif font-medium text-[17px] m-0 mb-3">Open questions</h2>
+        <ol class="m-0 pl-5">
+          <li class="text-[13px] text-gray-700 dark:text-gray-300 py-1">Should <b class="text-slate-dark dark:text-ivory font-semibold">Trash</b> (and maybe <b class="text-slate-dark dark:text-ivory font-semibold">Archive</b>) be pinned to the bottom and excluded from reordering?</li>
+          <li class="text-[13px] text-gray-700 dark:text-gray-300 py-1">Do we want rows to <b class="text-slate-dark dark:text-ivory font-semibold">slide</b> to their new slot on drop, or is the instant snap acceptable?</li>
+          <li class="text-[13px] text-gray-700 dark:text-gray-300 py-1">Keyboard path: is <code class="font-mono text-xs bg-gray-150 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 px-1 py-px rounded">Alt + Arrow</code> to move the focused row enough for the first ship?</li>
+        </ol>
+      </section>
+
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

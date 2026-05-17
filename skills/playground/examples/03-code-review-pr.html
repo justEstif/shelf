@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html x-data lang="en" class="scroll-smooth" x-bind:class="{ dark: $store.theme.dark }">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR #247 — Review Summary</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+  [x-cloak] { display: none; }
+  @theme {
+    --color-ivory: #FAF9F5;
+    --color-slate-dark: #141413;
+    --color-clay: #D97757;
+    --color-oat: #E3DACC;
+    --color-olive: #788C5D;
+    --color-rust: #B04A3F;
+    --color-gray-150: #F0EEE6;
+    --color-gray-300: #D1CFC5;
+    --color-gray-500: #87867F;
+    --color-gray-700: #3D3D3A;
+    --color-gray-800: #252522;
+    --color-gray-900: #181816;
+  }
+</style>
+<script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="bg-ivory dark:bg-slate-dark text-gray-700 dark:text-gray-300 font-sans text-[15px] leading-relaxed px-6 py-12 pb-20">
+
+  <button @click="$store.theme.toggle()"
+          class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+          :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+          x-text="$store.theme.dark ? '☀' : '☾'">
+  </button>
+
+<div class="max-w-[920px] mx-auto"
+     x-data="{ flash: '', hi(k) { this.flash = k; setTimeout(() => { if (this.flash === k) this.flash = ''; }, 1400); } }">
+
+  <header class="border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl px-8 py-7 bg-white dark:bg-gray-800 mb-9">
+    <div class="font-mono text-[12.5px] text-gray-500 tracking-[0.01em] mb-2.5">acme/web · Pull Request #247</div>
+    <h1 class="font-serif font-medium text-[30px] leading-[1.25] text-slate-dark dark:text-ivory mb-[18px]">Add optimistic updates to task list mutations</h1>
+    <div class="flex items-center flex-wrap gap-5">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-full bg-oat dark:bg-gray-700 text-slate-dark dark:text-ivory flex items-center justify-center font-semibold text-[13px] tracking-[0.02em] border-[1.5px] border-gray-300 dark:border-gray-600 shrink-0">MO</div>
+        <div>
+          <div class="font-medium text-slate-dark dark:text-ivory">Mira Okafor</div>
+          <div class="text-xs text-gray-500">opened 2 days ago</div>
+        </div>
+      </div>
+      <div class="font-mono text-[12.5px] text-gray-700 dark:text-gray-300 bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5">
+        mo/optimistic-tasks <span class="text-gray-500 mx-1.5">&#8594;</span> main
+      </div>
+      <div class="font-mono text-[13px]">
+        <span class="text-olive font-semibold">+142</span> / <span class="text-rust font-semibold">&#8722;38</span>
+        <span class="text-gray-500 ml-2.5">6 files changed</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="mb-10">
+    <h2 class="font-serif font-medium text-[21px] text-slate-dark dark:text-ivory mb-3.5">What this PR does</h2>
+    <ul class="list-none p-0">
+      <li class="relative pl-[22px] mb-2.5 before:content-[''] before:absolute before:left-1 before:top-[9px] before:w-1.5 before:h-1.5 before:bg-gray-500 before:rounded-sm">Replaces the await-then-refetch pattern in <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">TaskList</code> with optimistic cache writes, so toggling or reordering a task feels instant instead of waiting ~300ms for the round-trip.</li>
+      <li class="relative pl-[22px] mb-2.5 before:content-[''] before:absolute before:left-1 before:top-[9px] before:w-1.5 before:h-1.5 before:bg-gray-500 before:rounded-sm">Introduces a small <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">useOptimisticTasks</code> hook that wraps the mutation, snapshots the previous list, and rolls back on error.</li>
+      <li class="relative pl-[22px] mb-2.5 before:content-[''] before:absolute before:left-1 before:top-[9px] before:w-1.5 before:h-1.5 before:bg-gray-500 before:rounded-sm">Extends the API client to accept an idempotency key per mutation and adds a toast when a rollback fires.</li>
+    </ul>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="font-serif font-medium text-[21px] text-slate-dark dark:text-ivory mb-3.5">Risk map</h2>
+    <div class="flex flex-wrap gap-2.5">
+      <a class="inline-flex items-center gap-2 py-2 px-3 rounded-lg border-[1.5px] border-clay/55 bg-clay/12 font-mono text-[12.5px] text-slate-dark dark:text-ivory no-underline transition-transform duration-[120ms] hover:-translate-y-px" href="#file-hook" @click="hi('hook')">
+        <span class="w-[9px] h-[9px] rounded-full shrink-0 bg-clay"></span>useOptimisticTasks.ts
+      </a>
+      <a class="inline-flex items-center gap-2 py-2 px-3 rounded-lg border-[1.5px] border-gray-300 dark:border-gray-600 bg-oat dark:bg-gray-700 font-mono text-[12.5px] text-slate-dark dark:text-ivory no-underline transition-transform duration-[120ms] hover:-translate-y-px" href="#file-tasklist" @click="hi('tasklist')">
+        <span class="w-[9px] h-[9px] rounded-full shrink-0 bg-[#B89B6E]"></span>TaskList.tsx
+      </a>
+      <a class="inline-flex items-center gap-2 py-2 px-3 rounded-lg border-[1.5px] border-gray-300 dark:border-gray-600 bg-oat dark:bg-gray-700 font-mono text-[12.5px] text-slate-dark dark:text-ivory no-underline transition-transform duration-[120ms] hover:-translate-y-px" href="#file-api" @click="hi('api')">
+        <span class="w-[9px] h-[9px] rounded-full shrink-0 bg-[#B89B6E]"></span>api/tasks.ts
+      </a>
+      <a class="inline-flex items-center gap-2 py-2 px-3 rounded-lg border-[1.5px] border-olive/45 bg-olive/10 font-mono text-[12.5px] text-slate-dark dark:text-ivory no-underline transition-transform duration-[120ms] hover:-translate-y-px" href="#file-toast" @click="hi('toast')">
+        <span class="w-[9px] h-[9px] rounded-full shrink-0 bg-olive"></span>Toast.tsx
+      </a>
+      <a class="inline-flex items-center gap-2 py-2 px-3 rounded-lg border-[1.5px] border-olive/45 bg-olive/10 font-mono text-[12.5px] text-slate-dark dark:text-ivory no-underline transition-transform duration-[120ms] hover:-translate-y-px" href="#file-types" @click="hi('types')">
+        <span class="w-[9px] h-[9px] rounded-full shrink-0 bg-olive"></span>types/task.ts
+      </a>
+      <a class="inline-flex items-center gap-2 py-2 px-3 rounded-lg border-[1.5px] border-olive/45 bg-olive/10 font-mono text-[12.5px] text-slate-dark dark:text-ivory no-underline transition-transform duration-[120ms] hover:-translate-y-px" href="#file-test" @click="hi('test')">
+        <span class="w-[9px] h-[9px] rounded-full shrink-0 bg-olive"></span>TaskList.test.tsx
+      </a>
+    </div>
+    <div class="mt-3 text-xs text-gray-500 flex gap-[18px]">
+      <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-olive"></span> safe</span>
+      <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#B89B6E]"></span> worth a look</span>
+      <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-clay"></span> needs attention</span>
+    </div>
+  </section>
+
+  <section class="mb-10">
+    <h2 class="font-serif font-medium text-[21px] text-slate-dark dark:text-ivory mb-3.5">Files</h2>
+
+    <!-- File 1: useOptimisticTasks.ts (attention) -->
+    <article class="border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 mb-6 overflow-hidden scroll-mt-5 transition-shadow duration-[180ms] ease-in-out"
+             id="file-hook"
+             :class="flash === 'hook' ? 'shadow-[0_0_0_3px_rgba(217,119,87,0.35)]' : ''">
+      <div class="px-5 py-4 border-b-[1.5px] border-gray-150 dark:border-gray-700 flex items-center justify-between gap-3">
+        <div class="font-mono text-[13.5px] text-slate-dark dark:text-ivory">src/hooks/useOptimisticTasks.ts</div>
+        <div class="flex items-center gap-3">
+          <span class="text-[11px] uppercase tracking-[0.06em] px-2 py-0.5 rounded-md font-bold bg-clay/15 text-clay">needs attention</span>
+          <span class="font-mono text-xs text-gray-500"><span class="text-olive">+58</span> <span class="text-rust">&#8722;0</span></span>
+        </div>
+      </div>
+      <div class="bg-slate-dark font-mono text-[12.5px] leading-[1.7] overflow-x-auto">
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-white/4"><span class="text-right pr-3.5 text-gray-500 select-none"></span><span class="text-center text-gray-500"></span><span class="text-gray-500">@@ -0,0 +1,58 @@</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">1</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">import { useMutation, useQueryClient } from '@tanstack/react-query';</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">2</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">import { updateTask, TaskPatch } from '../api/tasks';</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">3</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">import type { Task } from '../types/task';</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">4</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]"> </span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">5</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">export function useOptimisticTasks(boardId: string) {</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">6</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">  const qc = useQueryClient();</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">7</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">  const key = ['tasks', boardId];</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">8</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]"> </span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">9</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">  return useMutation({</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">10</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">    mutationFn: (patch: TaskPatch) =&gt; updateTask(patch),</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">11</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">    onMutate: async (patch) =&gt; {</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">12</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">      const prev = qc.getQueryData&lt;Task[]&gt;(key);</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">13</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">      qc.setQueryData&lt;Task[]&gt;(key, (old = []) =&gt;</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">14</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">        old.map(t =&gt; t.id === patch.id ? { ...t, ...patch } : t)</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">15</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">      );</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">16</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">      return { prev };</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">17</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">    },</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">18</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">    onError: (_e, _p, ctx) =&gt; qc.setQueryData(key, ctx?.prev),</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">19</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">  });</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">20</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">}</span></div>
+      </div>
+      <div class="px-5 pt-[18px] pb-5 flex flex-col gap-3.5 bg-gray-150 dark:bg-gray-700">
+        <div class="relative bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 border-l-4 border-l-clay rounded-lg py-3 pr-3.5 pl-4 max-w-[680px] before:content-[''] before:absolute before:-left-[9px] before:top-4 before:w-3 before:h-3 before:bg-white dark:before:bg-gray-800 before:border-l-[1.5px] before:border-b-[1.5px] before:border-l-clay before:border-b-clay before:rotate-45">
+          <div class="font-mono text-[11.5px] text-gray-500 mb-1">line 11</div>
+          <p class="text-[13.5px] text-gray-700 dark:text-gray-300"><span class="text-[10.5px] uppercase tracking-[0.08em] font-bold text-clay mr-2">Blocking</span><code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">onMutate</code> doesn&#8217;t call <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">qc.cancelQueries(key)</code> first. If a background refetch lands between the optimistic write and the server response, it will clobber the optimistic state and the UI will flicker back to the old value.</p>
+        </div>
+        <div class="relative bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 border-l-4 rounded-lg py-3 pr-3.5 pl-4 max-w-[680px] before:content-[''] before:absolute before:-left-[9px] before:top-4 before:w-3 before:h-3 before:bg-white dark:before:bg-gray-800 before:border-l-[1.5px] before:border-b-[1.5px] before:border-l-gray-300 dark:before:border-l-gray-600 before:border-b-gray-300 dark:before:border-b-gray-600 before:rotate-45">
+          <div class="font-mono text-[11.5px] text-gray-500 mb-1">line 18</div>
+          <p class="text-[13.5px] text-gray-700 dark:text-gray-300"><span class="text-[10.5px] uppercase tracking-[0.08em] font-bold text-gray-500 mr-2">Nit</span>Rollback restores the list but never surfaces the error. Consider wiring the existing <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">pushToast</code> here so users know the toggle didn&#8217;t stick.</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- File 2: TaskList.tsx (medium) -->
+    <article class="border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 mb-6 overflow-hidden scroll-mt-5 transition-shadow duration-[180ms] ease-in-out"
+             id="file-tasklist"
+             :class="flash === 'tasklist' ? 'shadow-[0_0_0_3px_rgba(217,119,87,0.35)]' : ''">
+      <div class="px-5 py-4 border-b-[1.5px] border-gray-150 dark:border-gray-700 flex items-center justify-between gap-3">
+        <div class="font-mono text-[13.5px] text-slate-dark dark:text-ivory">src/components/TaskList.tsx</div>
+        <div class="flex items-center gap-3">
+          <span class="text-[11px] uppercase tracking-[0.06em] px-2 py-0.5 rounded-md font-bold bg-oat dark:bg-gray-700 text-[#7A6A4F] dark:text-gray-300">worth a look</span>
+          <span class="font-mono text-xs text-gray-500"><span class="text-olive">+31</span> <span class="text-rust">&#8722;24</span></span>
+        </div>
+      </div>
+      <div class="bg-slate-dark font-mono text-[12.5px] leading-[1.7] overflow-x-auto">
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-white/4"><span class="text-right pr-3.5 text-gray-500 select-none"></span><span class="text-center text-gray-500"></span><span class="text-gray-500">@@ -42,14 +42,17 @@ export function TaskList({ boardId }: Props) {</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre"><span class="text-right pr-3.5 text-gray-500 select-none">42</span><span class="text-center text-gray-500"> </span><span class="text-[#B8B6AC]">  const { data: tasks } = useTasks(boardId);</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-rust/15"><span class="text-right pr-3.5 text-gray-500 select-none">43</span><span class="text-center text-rust">-</span><span class="text-[#E8E6DC]">  const [pending, setPending] = useState&lt;string | null&gt;(null);</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-rust/15"><span class="text-right pr-3.5 text-gray-500 select-none">44</span><span class="text-center text-rust">-</span><span class="text-[#E8E6DC]"> </span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-rust/15"><span class="text-right pr-3.5 text-gray-500 select-none">45</span><span class="text-center text-rust">-</span><span class="text-[#E8E6DC]">  async function toggle(task: Task) {</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-rust/15"><span class="text-right pr-3.5 text-gray-500 select-none">46</span><span class="text-center text-rust">-</span><span class="text-[#E8E6DC]">    setPending(task.id);</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-rust/15"><span class="text-right pr-3.5 text-gray-500 select-none">47</span><span class="text-center text-rust">-</span><span class="text-[#E8E6DC]">    await updateTask({ id: task.id, done: !task.done });</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-rust/15"><span class="text-right pr-3.5 text-gray-500 select-none">48</span><span class="text-center text-rust">-</span><span class="text-[#E8E6DC]">    await refetch();</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-rust/15"><span class="text-right pr-3.5 text-gray-500 select-none">49</span><span class="text-center text-rust">-</span><span class="text-[#E8E6DC]">    setPending(null);</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-rust/15"><span class="text-right pr-3.5 text-gray-500 select-none">50</span><span class="text-center text-rust">-</span><span class="text-[#E8E6DC]">  }</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">43</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">  const { mutate, isPending } = useOptimisticTasks(boardId);</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">44</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]"> </span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">45</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">  const toggle = (task: Task) =&gt;</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">46</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">    mutate({ id: task.id, done: !task.done });</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre"><span class="text-right pr-3.5 text-gray-500 select-none">47</span><span class="text-center text-gray-500"> </span><span class="text-[#B8B6AC]"> </span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre"><span class="text-right pr-3.5 text-gray-500 select-none">48</span><span class="text-center text-gray-500"> </span><span class="text-[#B8B6AC]">  return (</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre"><span class="text-right pr-3.5 text-gray-500 select-none">49</span><span class="text-center text-gray-500"> </span><span class="text-[#B8B6AC]">    &lt;ul className="tasks"&gt;</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-rust/15"><span class="text-right pr-3.5 text-gray-500 select-none">50</span><span class="text-center text-rust">-</span><span class="text-[#E8E6DC]">      {tasks?.map(t =&gt; &lt;TaskRow key={t.id} task={t} busy={pending === t.id} /&gt;)}</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">50</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">      {tasks?.map(t =&gt; &lt;TaskRow key={t.id} task={t} onToggle={toggle} /&gt;)}</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre"><span class="text-right pr-3.5 text-gray-500 select-none">51</span><span class="text-center text-gray-500"> </span><span class="text-[#B8B6AC]">    &lt;/ul&gt;</span></div>
+      </div>
+      <div class="px-5 pt-[18px] pb-5 flex flex-col gap-3.5 bg-gray-150 dark:bg-gray-700">
+        <div class="relative bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 border-l-4 rounded-lg py-3 pr-3.5 pl-4 max-w-[680px] before:content-[''] before:absolute before:-left-[9px] before:top-4 before:w-3 before:h-3 before:bg-white dark:before:bg-gray-800 before:border-l-[1.5px] before:border-b-[1.5px] before:border-l-gray-300 dark:before:border-l-gray-600 before:border-b-gray-300 dark:before:border-b-gray-600 before:rotate-45">
+          <div class="font-mono text-[11.5px] text-gray-500 mb-1">line 43</div>
+          <p class="text-[13.5px] text-gray-700 dark:text-gray-300"><span class="text-[10.5px] uppercase tracking-[0.08em] font-bold text-gray-500 mr-2">Nit</span><code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">isPending</code> is destructured but never read. Either drop it or pass it to <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">TaskRow</code> so the checkbox can dim while the request is in flight.</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- File 3: api/tasks.ts (medium) -->
+    <article class="border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 mb-6 overflow-hidden scroll-mt-5 transition-shadow duration-[180ms] ease-in-out"
+             id="file-api"
+             :class="flash === 'api' ? 'shadow-[0_0_0_3px_rgba(217,119,87,0.35)]' : ''">
+      <div class="px-5 py-4 border-b-[1.5px] border-gray-150 dark:border-gray-700 flex items-center justify-between gap-3">
+        <div class="font-mono text-[13.5px] text-slate-dark dark:text-ivory">src/api/tasks.ts</div>
+        <div class="flex items-center gap-3">
+          <span class="text-[11px] uppercase tracking-[0.06em] px-2 py-0.5 rounded-md font-bold bg-oat dark:bg-gray-700 text-[#7A6A4F] dark:text-gray-300">worth a look</span>
+          <span class="font-mono text-xs text-gray-500"><span class="text-olive">+19</span> <span class="text-rust">&#8722;6</span></span>
+        </div>
+      </div>
+      <div class="bg-slate-dark font-mono text-[12.5px] leading-[1.7] overflow-x-auto">
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-white/4"><span class="text-right pr-3.5 text-gray-500 select-none"></span><span class="text-center text-gray-500"></span><span class="text-gray-500">@@ -12,10 +12,15 @@ export type TaskPatch = Partial&lt;Task&gt; &amp; { id: string };</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre"><span class="text-right pr-3.5 text-gray-500 select-none">12</span><span class="text-center text-gray-500"> </span><span class="text-[#B8B6AC]"> </span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-rust/15"><span class="text-right pr-3.5 text-gray-500 select-none">13</span><span class="text-center text-rust">-</span><span class="text-[#E8E6DC]">export async function updateTask(patch: TaskPatch) {</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-rust/15"><span class="text-right pr-3.5 text-gray-500 select-none">14</span><span class="text-center text-rust">-</span><span class="text-[#E8E6DC]">  return http.patch(`/tasks/${patch.id}`, patch);</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">13</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">export async function updateTask(</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">14</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">  patch: TaskPatch,</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">15</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">  key = crypto.randomUUID(),</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">16</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">) {</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">17</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">  return http.patch(`/tasks/${patch.id}`, patch, {</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">18</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">    headers: { 'Idempotency-Key': key },</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre bg-olive/15"><span class="text-right pr-3.5 text-gray-500 select-none">19</span><span class="text-center text-olive">+</span><span class="text-[#E8E6DC]">  });</span></div>
+        <div class="grid grid-cols-[48px_18px_1fr] items-baseline pr-3.5 whitespace-pre"><span class="text-right pr-3.5 text-gray-500 select-none">20</span><span class="text-center text-gray-500"> </span><span class="text-[#B8B6AC]">}</span></div>
+      </div>
+      <div class="px-5 pt-[18px] pb-5 flex flex-col gap-3.5 bg-gray-150 dark:bg-gray-700">
+        <div class="relative bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 border-l-4 border-l-clay rounded-lg py-3 pr-3.5 pl-4 max-w-[680px] before:content-[''] before:absolute before:-left-[9px] before:top-4 before:w-3 before:h-3 before:bg-white dark:before:bg-gray-800 before:border-l-[1.5px] before:border-b-[1.5px] before:border-l-clay before:border-b-clay before:rotate-45">
+          <div class="font-mono text-[11.5px] text-gray-500 mb-1">line 15</div>
+          <p class="text-[13.5px] text-gray-700 dark:text-gray-300"><span class="text-[10.5px] uppercase tracking-[0.08em] font-bold text-clay mr-2">Blocking</span>Generating the idempotency key as a default parameter means retries from the mutation layer get a <em>new</em> key each time, which defeats the purpose. The key should be minted once in <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">onMutate</code> and threaded through.</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- File 4: Toast.tsx (safe, collapsed) -->
+    <div class="border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 mb-3.5 scroll-mt-5"
+         id="file-toast"
+         x-data="{ open: false }">
+      <button class="w-full flex items-center justify-between gap-3 px-5 py-3.5 text-left cursor-pointer"
+              @click="open = !open">
+        <span class="font-mono text-[13.5px] text-slate-dark dark:text-ivory">src/components/Toast.tsx</span>
+        <span class="flex items-center gap-3">
+          <span class="text-[11px] uppercase tracking-[0.06em] px-2 py-0.5 rounded-md font-bold bg-olive/15 text-olive">safe</span>
+          <span class="font-mono text-xs text-gray-500"><span class="text-olive">+14</span> <span class="text-rust">&#8722;2</span></span>
+          <span class="font-mono text-gray-500 text-base leading-none" x-text="open ? '&#8722;' : '+'"></span>
+        </span>
+      </button>
+      <div class="px-5 pb-4 text-[13.5px] text-gray-700 dark:text-gray-300"
+           x-show="open"
+           x-transition
+           style="display:none">
+        Adds a <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">variant="warning"</code> style and exports <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">pushToast</code>. Purely additive, no behaviour change for existing call sites.
+      </div>
+    </div>
+
+    <!-- File 5: types/task.ts (safe, collapsed) -->
+    <div class="border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 mb-3.5 scroll-mt-5"
+         id="file-types"
+         x-data="{ open: false }">
+      <button class="w-full flex items-center justify-between gap-3 px-5 py-3.5 text-left cursor-pointer"
+              @click="open = !open">
+        <span class="font-mono text-[13.5px] text-slate-dark dark:text-ivory">src/types/task.ts</span>
+        <span class="flex items-center gap-3">
+          <span class="text-[11px] uppercase tracking-[0.06em] px-2 py-0.5 rounded-md font-bold bg-olive/15 text-olive">safe</span>
+          <span class="font-mono text-xs text-gray-500"><span class="text-olive">+6</span> <span class="text-rust">&#8722;2</span></span>
+          <span class="font-mono text-gray-500 text-base leading-none" x-text="open ? '&#8722;' : '+'"></span>
+        </span>
+      </button>
+      <div class="px-5 pb-4 text-[13.5px] text-gray-700 dark:text-gray-300"
+           x-show="open"
+           x-transition
+           style="display:none">
+        Widens <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">Task.status</code> to include <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">"archived"</code> and adds an optional <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">updatedAt</code> timestamp. Type-only change.
+      </div>
+    </div>
+
+    <!-- File 6: TaskList.test.tsx (safe, collapsed) -->
+    <div class="border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 mb-3.5 scroll-mt-5"
+         id="file-test"
+         x-data="{ open: false }">
+      <button class="w-full flex items-center justify-between gap-3 px-5 py-3.5 text-left cursor-pointer"
+              @click="open = !open">
+        <span class="font-mono text-[13.5px] text-slate-dark dark:text-ivory">src/components/__tests__/TaskList.test.tsx</span>
+        <span class="flex items-center gap-3">
+          <span class="text-[11px] uppercase tracking-[0.06em] px-2 py-0.5 rounded-md font-bold bg-olive/15 text-olive">safe</span>
+          <span class="font-mono text-xs text-gray-500"><span class="text-olive">+14</span> <span class="text-rust">&#8722;4</span></span>
+          <span class="font-mono text-gray-500 text-base leading-none" x-text="open ? '&#8722;' : '+'"></span>
+        </span>
+      </button>
+      <div class="px-5 pb-4 text-[13.5px] text-gray-700 dark:text-gray-300"
+           x-show="open"
+           x-transition
+           style="display:none">
+        Adds a test asserting the row updates synchronously after click, and one asserting rollback when the mocked request rejects. Both pass locally.
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 px-7 py-6">
+    <h2 class="font-serif font-medium text-[21px] text-slate-dark dark:text-ivory mb-3.5">Suggested next steps</h2>
+    <ul class="list-none p-0">
+      <li class="flex items-start gap-3 py-2">
+        <input type="checkbox" id="step1" class="w-[17px] h-[17px] mt-0.5 accent-olive cursor-pointer shrink-0">
+        <label for="step1" class="cursor-pointer flex-1 text-[14px]">Add <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">await qc.cancelQueries(key)</code> at the top of <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">onMutate</code> in <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">useOptimisticTasks.ts</code>.</label>
+      </li>
+      <li class="flex items-start gap-3 py-2">
+        <input type="checkbox" id="step2" class="w-[17px] h-[17px] mt-0.5 accent-olive cursor-pointer shrink-0">
+        <label for="step2" class="cursor-pointer flex-1 text-[14px]">Move idempotency-key generation into the mutation context so retries reuse the same key.</label>
+      </li>
+      <li class="flex items-start gap-3 py-2">
+        <input type="checkbox" id="step3" class="w-[17px] h-[17px] mt-0.5 accent-olive cursor-pointer shrink-0">
+        <label for="step3" class="cursor-pointer flex-1 text-[14px]">Either consume <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">isPending</code> in <code class="font-mono text-[12.5px] bg-gray-150 dark:bg-gray-700 px-[5px] py-px rounded">TaskRow</code> or remove it from the destructure to keep lint clean.</label>
+      </li>
+    </ul>
+  </footer>
+
+</div>
+</body>
+</html>

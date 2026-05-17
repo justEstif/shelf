@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html x-data lang="en"
+      x-bind:class="{ dark: $store.theme.dark }">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debounced search — three approaches</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @custom-variant dark (&:where(.dark, .dark *));
+    [x-cloak] { display: none; }
+    @theme {
+      --color-ivory: #FAF9F5;
+      --color-slate-dark: #141413;
+      --color-clay: #D97757;
+      --color-oat: #E3DACC;
+      --color-olive: #788C5D;
+      --color-gray-150: #F0EEE6;
+      --color-gray-300: #D1CFC5;
+      --color-gray-500: #87867F;
+      --color-gray-700: #3D3D3A;
+    --color-gray-800: #252522;
+    --color-gray-900: #181816;
+    }
+  </style>
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="font-sans bg-ivory dark:bg-slate-dark text-gray-700 dark:text-gray-300 leading-[1.55] pt-14 px-4 md:px-8 pb-24 antialiased">
+
+  <button @click="$store.theme.toggle()"
+          class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+          :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+          x-text="$store.theme.dark ? '☀' : '☾'">
+  </button>
+
+  <div class="max-w-[1360px] mx-auto">
+
+    <header class="mb-12 max-w-[760px]">
+      <div class="text-[12px] tracking-[0.08em] uppercase text-gray-500 mb-3">Exploration · Acme web client</div>
+      <h1 class="font-serif font-medium text-[26px] md:text-[38px] leading-[1.15] text-slate-dark dark:text-ivory mb-[18px] tracking-[-0.01em]">Three ways to implement debounced search</h1>
+      <div class="bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl p-4 px-5 text-[14.5px] text-gray-700 dark:text-gray-300">
+        <span class="font-mono text-[11px] uppercase tracking-[0.06em] text-gray-500 block mb-1.5">Prompt</span>
+        Show me three different ways to implement debounced search for the task
+        filter input in our React codebase, with tradeoffs for each.
+      </div>
+    </header>
+
+    <!-- ============================================================= -->
+
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-7 mb-14">
+
+      <!-- ---------- Approach 1 ---------- -->
+      <article class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl p-6 flex flex-col gap-5">
+        <header>
+          <h2 class="font-serif font-medium text-[21px] text-slate-dark dark:text-ivory mb-1.5">
+            <span class="inline-block font-mono text-[12px] bg-oat dark:bg-gray-700 text-slate-dark dark:text-ivory px-2 py-0.5 rounded-lg mr-2 align-[3px]">01</span>Inline useEffect + setTimeout
+          </h2>
+          <p class="text-sm text-gray-500">Debounce logic lives directly inside the component that owns the input.</p>
+        </header>
+
+        <div class="bg-slate-dark rounded-xl p-[18px] px-5 overflow-x-auto">
+          <pre class="font-mono text-[12.5px] leading-[1.65] text-[#E8E6DE] whitespace-pre"><span class="text-clay">export function</span> <span class="text-[#C9B98A]">TaskSearch</span>() {
+  <span class="text-clay">const</span> [draft, setDraft] = <span class="text-[#C9B98A]">useState</span>(<span class="text-olive">''</span>);
+  <span class="text-clay">const</span> [query, setQuery] = <span class="text-[#C9B98A]">useState</span>(<span class="text-olive">''</span>);
+
+  <span class="text-[#C9B98A]">useEffect</span>(() <span class="text-clay">=&gt;</span> {
+    <span class="text-clay">const</span> id = <span class="text-[#C9B98A]">setTimeout</span>(() <span class="text-clay">=&gt;</span> setQuery(draft), <span class="text-olive">300</span>);
+    <span class="text-clay">return</span> () <span class="text-clay">=&gt;</span> <span class="text-[#C9B98A]">clearTimeout</span>(id);
+  }, [draft]);
+
+  <span class="text-clay">const</span> { data } = <span class="text-[#C9B98A]">useTasks</span>({ search: query });
+
+  <span class="text-clay">return</span> (
+    &lt;<span class="text-[#C9B98A]">input</span>
+      value={draft}
+      onChange={(e) <span class="text-clay">=&gt;</span> setDraft(e.target.value)}
+      placeholder=<span class="text-olive">"Filter tasks…"</span>
+    /&gt;
+  );
+}</pre>
+        </div>
+
+        <div class="border-[1.5px] border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden text-[13px]">
+          <div class="grid grid-cols-2">
+            <div class="p-[10px] px-[14px] bg-gray-150 dark:bg-gray-700 font-semibold text-slate-dark dark:text-ivory text-[12px] uppercase tracking-[0.04em] border-r-[1.5px] border-gray-300 dark:border-gray-600">Pro</div>
+            <div class="p-[10px] px-[14px] bg-gray-150 dark:bg-gray-700 font-semibold text-slate-dark dark:text-ivory text-[12px] uppercase tracking-[0.04em]">Con</div>
+          </div>
+          <div class="grid grid-cols-2 border-t-[1.5px] border-gray-300 dark:border-gray-600">
+            <div class="p-[10px] px-[14px] border-r-[1.5px] border-gray-300 dark:border-gray-600">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-olive mr-2 translate-y-[2px]"></span>Zero new abstractions to learn
+            </div>
+            <div class="p-[10px] px-[14px]">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-clay mr-2 translate-y-[2px]"></span>Logic duplicated everywhere search exists
+            </div>
+          </div>
+          <div class="grid grid-cols-2 border-t-[1.5px] border-gray-300 dark:border-gray-600">
+            <div class="p-[10px] px-[14px] border-r-[1.5px] border-gray-300 dark:border-gray-600">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-olive mr-2 translate-y-[2px]"></span>Easy to step through in devtools
+            </div>
+            <div class="p-[10px] px-[14px]">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-clay mr-2 translate-y-[2px]"></span>Two pieces of state for one conceptual value
+            </div>
+          </div>
+          <div class="grid grid-cols-2 border-t-[1.5px] border-gray-300 dark:border-gray-600">
+            <div class="p-[10px] px-[14px] border-r-[1.5px] border-gray-300 dark:border-gray-600">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-olive mr-2 translate-y-[2px]"></span>No dependency or bundle change
+            </div>
+            <div class="p-[10px] px-[14px]">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-clay mr-2 translate-y-[2px]"></span>Delay constant is buried in component body
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">Bundle impact: <strong class="text-slate-dark dark:text-ivory font-semibold">+0 kb</strong></span>
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">Testability: <strong class="text-slate-dark dark:text-ivory font-semibold">medium</strong></span>
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">Reuse: <strong class="text-slate-dark dark:text-ivory font-semibold">low</strong></span>
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">SSR safe: <strong class="text-slate-dark dark:text-ivory font-semibold">yes</strong></span>
+        </div>
+      </article>
+
+      <!-- ---------- Approach 2 ---------- -->
+      <article class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl p-6 flex flex-col gap-5">
+        <header>
+          <h2 class="font-serif font-medium text-[21px] text-slate-dark dark:text-ivory mb-1.5">
+            <span class="inline-block font-mono text-[12px] bg-oat dark:bg-gray-700 text-slate-dark dark:text-ivory px-2 py-0.5 rounded-lg mr-2 align-[3px]">02</span>Custom useDebounce hook
+          </h2>
+          <p class="text-sm text-gray-500">Extract the timer into a shared hook under <code class="font-mono">src/hooks/</code>.</p>
+        </header>
+
+        <div class="bg-slate-dark rounded-xl p-[18px] px-5 overflow-x-auto">
+          <pre class="font-mono text-[12.5px] leading-[1.65] text-[#E8E6DE] whitespace-pre"><span class="text-gray-500">// src/hooks/useDebounce.ts</span>
+<span class="text-clay">export function</span> <span class="text-[#C9B98A]">useDebounce</span>&lt;T&gt;(value: T, ms = <span class="text-olive">300</span>): T {
+  <span class="text-clay">const</span> [debounced, setDebounced] = <span class="text-[#C9B98A]">useState</span>(value);
+  <span class="text-[#C9B98A]">useEffect</span>(() <span class="text-clay">=&gt;</span> {
+    <span class="text-clay">const</span> id = <span class="text-[#C9B98A]">setTimeout</span>(() <span class="text-clay">=&gt;</span> setDebounced(value), ms);
+    <span class="text-clay">return</span> () <span class="text-clay">=&gt;</span> <span class="text-[#C9B98A]">clearTimeout</span>(id);
+  }, [value, ms]);
+  <span class="text-clay">return</span> debounced;
+}
+
+<span class="text-gray-500">// TaskSearch.tsx</span>
+<span class="text-clay">const</span> [draft, setDraft] = <span class="text-[#C9B98A]">useState</span>(<span class="text-olive">''</span>);
+<span class="text-clay">const</span> query = <span class="text-[#C9B98A]">useDebounce</span>(draft, <span class="text-olive">300</span>);
+<span class="text-clay">const</span> { data } = <span class="text-[#C9B98A]">useTasks</span>({ search: query });</pre>
+        </div>
+
+        <div class="border-[1.5px] border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden text-[13px]">
+          <div class="grid grid-cols-2">
+            <div class="p-[10px] px-[14px] bg-gray-150 dark:bg-gray-700 font-semibold text-slate-dark dark:text-ivory text-[12px] uppercase tracking-[0.04em] border-r-[1.5px] border-gray-300 dark:border-gray-600">Pro</div>
+            <div class="p-[10px] px-[14px] bg-gray-150 dark:bg-gray-700 font-semibold text-slate-dark dark:text-ivory text-[12px] uppercase tracking-[0.04em]">Con</div>
+          </div>
+          <div class="grid grid-cols-2 border-t-[1.5px] border-gray-300 dark:border-gray-600">
+            <div class="p-[10px] px-[14px] border-r-[1.5px] border-gray-300 dark:border-gray-600">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-olive mr-2 translate-y-[2px]"></span>Single import reused across filter, command bar, board search
+            </div>
+            <div class="p-[10px] px-[14px]">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-clay mr-2 translate-y-[2px]"></span>One more file to maintain and document
+            </div>
+          </div>
+          <div class="grid grid-cols-2 border-t-[1.5px] border-gray-300 dark:border-gray-600">
+            <div class="p-[10px] px-[14px] border-r-[1.5px] border-gray-300 dark:border-gray-600">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-olive mr-2 translate-y-[2px]"></span>Trivial to unit test with fake timers
+            </div>
+            <div class="p-[10px] px-[14px]">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-clay mr-2 translate-y-[2px]"></span>Generic <code class="font-mono">T</code> hides intent slightly
+            </div>
+          </div>
+          <div class="grid grid-cols-2 border-t-[1.5px] border-gray-300 dark:border-gray-600">
+            <div class="p-[10px] px-[14px] border-r-[1.5px] border-gray-300 dark:border-gray-600">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-olive mr-2 translate-y-[2px]"></span>Delay is a visible, tunable argument
+            </div>
+            <div class="p-[10px] px-[14px]">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-clay mr-2 translate-y-[2px]"></span>Still re-renders on every keystroke
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">Bundle impact: <strong class="text-slate-dark dark:text-ivory font-semibold">+0.2 kb</strong></span>
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">Testability: <strong class="text-slate-dark dark:text-ivory font-semibold">high</strong></span>
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">Reuse: <strong class="text-slate-dark dark:text-ivory font-semibold">high</strong></span>
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">SSR safe: <strong class="text-slate-dark dark:text-ivory font-semibold">yes</strong></span>
+        </div>
+      </article>
+
+      <!-- ---------- Approach 3 ---------- -->
+      <article class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl p-6 flex flex-col gap-5">
+        <header>
+          <h2 class="font-serif font-medium text-[21px] text-slate-dark dark:text-ivory mb-1.5">
+            <span class="inline-block font-mono text-[12px] bg-oat dark:bg-gray-700 text-slate-dark dark:text-ivory px-2 py-0.5 rounded-lg mr-2 align-[3px]">03</span>Tiny external library
+          </h2>
+          <p class="text-sm text-gray-500">Adopt <code class="font-mono">use-debounce</code> for both values and callbacks.</p>
+        </header>
+
+        <div class="bg-slate-dark rounded-xl p-[18px] px-5 overflow-x-auto">
+          <pre class="font-mono text-[12.5px] leading-[1.65] text-[#E8E6DE] whitespace-pre"><span class="text-clay">import</span> { useDebouncedCallback }
+  <span class="text-clay">from</span> <span class="text-olive">'use-debounce'</span>;
+
+<span class="text-clay">export function</span> <span class="text-[#C9B98A]">TaskSearch</span>() {
+  <span class="text-clay">const</span> [query, setQuery] = <span class="text-[#C9B98A]">useState</span>(<span class="text-olive">''</span>);
+
+  <span class="text-clay">const</span> onChange = <span class="text-[#C9B98A]">useDebouncedCallback</span>(
+    (next: <span class="text-clay">string</span>) <span class="text-clay">=&gt;</span> setQuery(next),
+    <span class="text-olive">300</span>,
+    { leading: <span class="text-clay">false</span>, maxWait: <span class="text-olive">1000</span> },
+  );
+
+  <span class="text-clay">const</span> { data } = <span class="text-[#C9B98A]">useTasks</span>({ search: query });
+
+  <span class="text-clay">return</span> (
+    &lt;<span class="text-[#C9B98A]">input</span>
+      defaultValue=<span class="text-olive">""</span>
+      onChange={(e) <span class="text-clay">=&gt;</span> onChange(e.target.value)}
+    /&gt;
+  );
+}</pre>
+        </div>
+
+        <div class="border-[1.5px] border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden text-[13px]">
+          <div class="grid grid-cols-2">
+            <div class="p-[10px] px-[14px] bg-gray-150 dark:bg-gray-700 font-semibold text-slate-dark dark:text-ivory text-[12px] uppercase tracking-[0.04em] border-r-[1.5px] border-gray-300 dark:border-gray-600">Pro</div>
+            <div class="p-[10px] px-[14px] bg-gray-150 dark:bg-gray-700 font-semibold text-slate-dark dark:text-ivory text-[12px] uppercase tracking-[0.04em]">Con</div>
+          </div>
+          <div class="grid grid-cols-2 border-t-[1.5px] border-gray-300 dark:border-gray-600">
+            <div class="p-[10px] px-[14px] border-r-[1.5px] border-gray-300 dark:border-gray-600">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-olive mr-2 translate-y-[2px]"></span>leading / trailing / maxWait handled for us
+            </div>
+            <div class="p-[10px] px-[14px]">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-clay mr-2 translate-y-[2px]"></span>New runtime dependency to audit and update
+            </div>
+          </div>
+          <div class="grid grid-cols-2 border-t-[1.5px] border-gray-300 dark:border-gray-600">
+            <div class="p-[10px] px-[14px] border-r-[1.5px] border-gray-300 dark:border-gray-600">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-olive mr-2 translate-y-[2px]"></span>Callback form skips intermediate re-renders
+            </div>
+            <div class="p-[10px] px-[14px]">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-clay mr-2 translate-y-[2px]"></span>Uncontrolled input diverges from Acme form patterns
+            </div>
+          </div>
+          <div class="grid grid-cols-2 border-t-[1.5px] border-gray-300 dark:border-gray-600">
+            <div class="p-[10px] px-[14px] border-r-[1.5px] border-gray-300 dark:border-gray-600">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-olive mr-2 translate-y-[2px]"></span>Well-tested edge cases (unmount, flush, cancel)
+            </div>
+            <div class="p-[10px] px-[14px]">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-clay mr-2 translate-y-[2px]"></span>~1.4 kb gzipped for something we could own
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">Bundle impact: <strong class="text-slate-dark dark:text-ivory font-semibold">+1.4 kb</strong></span>
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">Testability: <strong class="text-slate-dark dark:text-ivory font-semibold">high</strong></span>
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">Reuse: <strong class="text-slate-dark dark:text-ivory font-semibold">high</strong></span>
+          <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-2.5 py-[5px] rounded-lg whitespace-nowrap">SSR safe: <strong class="text-slate-dark dark:text-ivory font-semibold">yes</strong></span>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ============================================================= -->
+
+    <aside class="border-l-4 border-clay bg-white dark:bg-gray-800 rounded-r-xl p-6 px-7 max-w-[860px]">
+      <h2 class="font-serif font-medium text-[22px] text-slate-dark dark:text-ivory mb-2.5">Recommendation</h2>
+      <p class="text-[15px] mb-2">
+        Go with <strong>approach 02, the custom <code class="font-mono text-[0.92em] bg-gray-150 dark:bg-gray-700 px-1.5 py-px rounded">useDebounce</code> hook</strong>.
+        Acme already has three places that hand-roll the inline pattern
+        (task filter, command palette, member picker), so extracting one
+        shared hook removes duplication without taking on a new dependency.
+      </p>
+      <p class="text-[15px] mb-2">
+        Revisit approach 03 only if we later need <code class="font-mono text-[0.92em] bg-gray-150 dark:bg-gray-700 px-1.5 py-px rounded">maxWait</code> or
+        <code class="font-mono text-[0.92em] bg-gray-150 dark:bg-gray-700 px-1.5 py-px rounded">flush()</code> semantics — the library earns its bundle cost
+        once the requirements outgrow a ten-line hook.
+      </p>
+    </aside>
+
+  </div>
+</body>
+</html>

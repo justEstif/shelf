@@ -1,0 +1,301 @@
+<!doctype html>
+<html x-data lang="en" x-bind:class="{ dark: $store.theme.dark }">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acme — Task completed micro-interaction</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+
+  @theme {
+    --color-ivory: #FAF9F5;
+    --color-slate-dark: #141413;
+    --color-clay: #D97757;
+    --color-oat: #E3DACC;
+    --color-olive: #788C5D;
+    --color-gray-150: #F0EEE6;
+    --color-gray-300: #D1CFC5;
+    --color-gray-500: #87867F;
+    --color-gray-700: #3D3D3A;
+    --color-gray-800: #252522;
+    --color-gray-900: #181816;
+  }
+  [x-cloak] { display: none; }
+
+  :root { --ease: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+  /* task row transitions — driven by --ease */
+  .task {
+    max-height: 64px;
+    transition: max-height 280ms var(--ease) 600ms,
+                opacity 280ms var(--ease) 600ms,
+                padding 280ms var(--ease) 600ms,
+                border-color 200ms var(--ease);
+  }
+  .task:hover { border-color: #87867F; }
+
+  /* check circle */
+  .check {
+    transition: background 180ms var(--ease),
+                border-color 180ms var(--ease),
+                transform 260ms var(--ease);
+  }
+  .check svg {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 14px;
+    height: 14px;
+  }
+  .check path {
+    stroke: #ffffff;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    stroke-dasharray: 20;
+    stroke-dashoffset: 20;
+    transition: stroke-dashoffset 220ms var(--ease) 80ms;
+  }
+
+  /* label strikethrough pseudo-element */
+  .label::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 52%;
+    height: 1.5px;
+    width: 0;
+    background: #87867F;
+    transition: width 240ms var(--ease) 120ms;
+  }
+
+  /* due badge */
+  .due {
+    transition: opacity 200ms var(--ease) 120ms;
+  }
+
+  /* confetti particles */
+  .confetti {
+    position: absolute;
+    left: 22px;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    border-radius: 2px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .confetti.c1 { background: #D97757; }
+  .confetti.c2 { background: #788C5D; }
+  .confetti.c3 { background: #E3DACC; }
+  .confetti.c4 { background: #D97757; }
+  .confetti.c5 { background: #788C5D; }
+  .confetti.c6 { background: #3D3D3A; }
+
+  /* done state — all animation rules */
+  .task.done .check {
+    background: #788C5D;
+    border-color: #788C5D;
+    transform: scale(1.12);
+    animation: settle 380ms var(--ease) forwards;
+  }
+  @keyframes settle {
+    0%   { transform: scale(0.8);  background: #D97757; border-color: #D97757; }
+    55%  { transform: scale(1.18); }
+    100% { transform: scale(1);    background: #788C5D; border-color: #788C5D; }
+  }
+  .task.done .check path { stroke-dashoffset: 0; }
+  .task.done .label { color: #87867F; }
+  .task.done .label::after { width: 100%; }
+  .task.done .due { opacity: 0.35; }
+  .task.done {
+    max-height: 44px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    opacity: 0.6;
+  }
+  .task.done .confetti { animation: pop 520ms var(--ease) 200ms forwards; }
+  .task.done .confetti.c1 { --dx: -28px; --dy: -22px; --rot:  40deg; }
+  .task.done .confetti.c2 { --dx:  -6px; --dy: -34px; --rot: -60deg; }
+  .task.done .confetti.c3 { --dx:  18px; --dy: -26px; --rot:  90deg; }
+  .task.done .confetti.c4 { --dx:  30px; --dy:  -4px; --rot: -30deg; }
+  .task.done .confetti.c5 { --dx: -24px; --dy:  14px; --rot:  20deg; }
+  .task.done .confetti.c6 { --dx:  12px; --dy:  22px; --rot: -80deg; }
+  @keyframes pop {
+    0%   { opacity: 0; transform: translate(0, 0) rotate(0) scale(0.6); }
+    15%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1); }
+  }
+
+  /* ease button active state */
+  .ease-btn.active {
+    border-color: #D97757;
+    background: #FBF1EC;
+  }
+  :where(.dark, .dark *) .ease-btn.active {
+    background: rgba(217, 119, 87, 0.2);
+  }
+
+  /* timeline key labels — absolute-positioned children */
+  .key span {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10px;
+    color: #3D3D3A;
+  }
+  .key em {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-style: normal;
+    font-size: 11px;
+    color: #87867F;
+  }
+  :where(.dark, .dark *) .key span { color: #d1d5db; }
+  :where(.dark, .dark *) .key em   { color: #6b7280; }
+
+  .k1 { left: 0%;   }
+  .k2 { left: 13%;  }
+  .k3 { left: 20%;  }
+  .k4 { left: 33%;  }
+  .k5 { left: 100%; background: #788C5D; box-shadow: 0 0 0 1.5px #788C5D; }
+
+  /* snippet syntax highlighting */
+  pre .c { color: #87867F; }
+  pre .k { color: #D97757; }
+  pre .v { color: #B8C99D; }
+</style>
+<script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="m-0 bg-ivory dark:bg-slate-dark text-slate-dark dark:text-ivory font-sans text-sm leading-[1.5]">
+<button @click="$store.theme.toggle()"
+        class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+        :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+        x-text="$store.theme.dark ? '☀' : '☾'">
+</button>
+<div class="max-w-[1080px] mx-auto px-4 md:px-8 pt-12 pb-16"
+     x-data="{
+       done: false,
+       activeEase: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+       setEase(e) {
+         this.activeEase = e;
+         document.documentElement.style.setProperty('--ease', e);
+       }
+     }">
+
+  <header class="mb-7">
+    <div class="font-mono text-[11px] tracking-[0.08em] uppercase text-gray-500 dark:text-gray-400">Acme / prototype / micro-interaction</div>
+    <h1 class="font-serif font-medium text-[30px] tracking-[-0.01em] mt-1.5 mb-1">Task completed</h1>
+    <p class="text-gray-500 dark:text-gray-400 max-w-[560px]">
+      A single click should feel like a tiny win. Circle fills, check draws,
+      label strikes, a small burst, then the row quietly steps back. Click
+      the row to play; click again to reset.
+    </p>
+  </header>
+
+  <div class="grid grid-cols-1 md:[grid-template-columns:1fr_240px] gap-6 items-start">
+
+    <div class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-[12px] h-[360px] flex items-center justify-center relative overflow-hidden">
+      <div class="task flex items-center gap-3.5 py-3.5 px-[18px] border border-gray-300 dark:border-gray-600 rounded-[8px] bg-white dark:bg-gray-800 w-[360px] relative cursor-pointer select-none"
+           :class="{'done': done}"
+           @click="done = !done">
+        <div class="check flex-none w-6 h-6 rounded-full border border-gray-500 bg-white dark:bg-gray-700 relative">
+          <svg viewBox="0 0 16 16"><path d="M3 8.5 L6.5 12 L13 4.5"/></svg>
+        </div>
+        <span class="label relative text-[15px] text-slate-dark dark:text-ivory">Send weekly digest</span>
+        <span class="due ml-auto font-mono text-[11px] text-gray-500 dark:text-gray-400 bg-gray-150 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 py-[3px] px-2 rounded-[8px]">Fri</span>
+        <div class="confetti c1"></div>
+        <div class="confetti c2"></div>
+        <div class="confetti c3"></div>
+        <div class="confetti c4"></div>
+        <div class="confetti c5"></div>
+        <div class="confetti c6"></div>
+      </div>
+      <div class="absolute bottom-3.5 left-1/2 -translate-x-1/2 font-mono text-[11px] text-gray-500 dark:text-gray-400">click to toggle</div>
+    </div>
+
+    <aside class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-[12px] p-[18px]" x-cloak>
+      <h2 class="font-serif font-medium text-[16px] m-0 mb-1">Easing</h2>
+      <p class="m-0 mb-3.5 text-xs text-gray-500 dark:text-gray-400">Swaps <code>--ease</code> across every transition so you can feel the difference.</p>
+      <button class="ease-btn block w-full text-left bg-gray-150 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-[8px] py-2.5 px-3 mb-2 font-sans text-[13px] text-slate-dark dark:text-gray-300 cursor-pointer hover:border-gray-500 dark:hover:border-gray-500"
+              @click="setEase('linear')"
+              :class="{'active': activeEase === 'linear'}">
+        Linear
+        <code class="block font-mono text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">linear</code>
+      </button>
+      <button class="ease-btn block w-full text-left bg-gray-150 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-[8px] py-2.5 px-3 mb-2 font-sans text-[13px] text-slate-dark dark:text-gray-300 cursor-pointer hover:border-gray-500 dark:hover:border-gray-500"
+              @click="setEase('cubic-bezier(0.16, 1, 0.3, 1)')"
+              :class="{'active': activeEase === 'cubic-bezier(0.16, 1, 0.3, 1)'}">
+        Ease-out
+        <code class="block font-mono text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">cubic-bezier(.16, 1, .3, 1)</code>
+      </button>
+      <button class="ease-btn block w-full text-left bg-gray-150 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-[8px] py-2.5 px-3 mb-2 font-sans text-[13px] text-slate-dark dark:text-gray-300 cursor-pointer hover:border-gray-500 dark:hover:border-gray-500"
+              @click="setEase('cubic-bezier(0.34, 1.56, 0.64, 1)')"
+              :class="{'active': activeEase === 'cubic-bezier(0.34, 1.56, 0.64, 1)'}">
+        Spring
+        <code class="block font-mono text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">cubic-bezier(.34, 1.56, .64, 1)</code>
+      </button>
+    </aside>
+
+  </div>
+
+  <section class="mt-7 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-[12px] py-[22px] px-[22px] pb-[30px]">
+    <h2 class="font-serif font-medium text-[16px] m-0 mb-[18px]">Keyframes</h2>
+    <div class="relative h-0.5 bg-gray-300 dark:bg-gray-600 mx-2 mt-5">
+      <div class="key k1 absolute -top-[5px] w-3 h-3 rounded-full bg-clay border border-white dark:border-gray-800 shadow-[0_0_0_1.5px_#D97757] -translate-x-1/2"><em>fill</em><span>0ms</span></div>
+      <div class="key k2 absolute -top-[5px] w-3 h-3 rounded-full bg-clay border border-white dark:border-gray-800 shadow-[0_0_0_1.5px_#D97757] -translate-x-1/2"><em>check</em><span>80ms</span></div>
+      <div class="key k3 absolute -top-[5px] w-3 h-3 rounded-full bg-clay border border-white dark:border-gray-800 shadow-[0_0_0_1.5px_#D97757] -translate-x-1/2"><em>strike</em><span>120ms</span></div>
+      <div class="key k4 absolute -top-[5px] w-3 h-3 rounded-full bg-clay border border-white dark:border-gray-800 shadow-[0_0_0_1.5px_#D97757] -translate-x-1/2"><em>confetti</em><span>200ms</span></div>
+      <div class="key k5 absolute -top-[5px] w-3 h-3 rounded-full bg-clay border border-white dark:border-gray-800 shadow-[0_0_0_1.5px_#D97757] -translate-x-1/2"><em>collapse</em><span>600ms</span></div>
+    </div>
+  </section>
+
+  <section class="mt-7">
+    <h2 class="font-serif font-medium text-[16px] m-0 mb-2.5">Copy-paste CSS</h2>
+<pre class="bg-gray-700 text-gray-150 rounded-[12px] py-[18px] px-5 font-mono text-xs leading-[1.7] overflow-x-auto m-0"><span class="c">/* circle: clay flash, settle to olive with spring overshoot */</span>
+<span class="k">.task.done .check</span> {
+  animation: settle 380ms <span class="v">cubic-bezier(.34,1.56,.64,1)</span> forwards;
+}
+<span class="k">@keyframes settle</span> {
+  0%   { transform: scale(.8);  background: <span class="v">#D97757</span>; }
+  55%  { transform: scale(1.18); }
+  100% { transform: scale(1);   background: <span class="v">#788C5D</span>; }
+}
+
+<span class="c">/* checkmark draws via stroke-dashoffset, 80ms delay */</span>
+<span class="k">.check path</span>        { stroke-dasharray: 20; stroke-dashoffset: 20;
+                     transition: stroke-dashoffset 220ms var(--ease) 80ms; }
+<span class="k">.task.done path</span>    { stroke-dashoffset: 0; }
+
+<span class="c">/* strikethrough grows left → right */</span>
+<span class="k">.label::after</span>      { width: 0; transition: width 240ms var(--ease) 120ms; }
+<span class="k">.task.done .label::after</span> { width: 100%; }
+
+<span class="c">/* row steps back after the celebration */</span>
+<span class="k">.task.done</span>         { max-height: 44px; opacity: .6;
+                     transition-delay: 600ms; }</pre>
+  </section>
+
+</div>
+</body>
+</html>

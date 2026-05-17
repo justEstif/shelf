@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocalTrack</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-ivory:      #FAF9F5;
+      --color-slate-dark: #141413;
+      --color-clay:       #D97757;
+      --color-oat:        #E3DACC;
+      --color-olive:      #788C5D;
+      --color-gray-150:   #F0EEE6;
+      --color-gray-300:   #D1CFC5;
+      --color-gray-500:   #87867F;
+      --color-gray-700:   #3D3D3A;
+    }
+
+    @keyframes spin   { to { transform: rotate(360deg); } }
+    @keyframes pulse  { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    .spinner    { animation: spin 0.75s linear infinite; }
+    .pulsing    { animation: pulse 1.6s ease-in-out infinite; }
+    .toast-in   { animation: toast-in 0.18s ease forwards; }
+
+    /* Native <dialog> resets */
+    dialog {
+      color: inherit;
+      background: #FAF9F5;
+      max-height: 90dvh;
+      overflow-y: auto;
+    }
+    dialog::backdrop { background: rgba(20,20,19,.45); }
+  </style>
+</head>
+
+<body class="bg-ivory text-slate-dark min-h-dvh antialiased"
+      x-data="app()"
+      x-init="init()">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Loading overlay
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div x-show="!ready"
+       class="fixed inset-0 bg-ivory z-50 flex items-center justify-center">
+    <div class="text-center space-y-3">
+      <div class="w-7 h-7 mx-auto rounded-full border-2 border-clay border-t-transparent spinner"></div>
+      <p class="text-sm text-gray-500">Opening database…</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       App shell
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div x-show="ready" class="max-w-xl mx-auto px-4 pt-8 pb-24">
+
+    <!-- Header ──────────────────────────────────────────────────────────── -->
+    <header class="flex items-center justify-between mb-8">
+      <div class="flex items-center gap-2.5">
+        <svg class="w-6 h-6 text-clay" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 7v5l3.5 3.5" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="text-lg font-semibold tracking-tight">LocalTrack</span>
+      </div>
+
+      <nav class="flex items-center gap-0.5">
+        <button @click="exportCSV()"
+                title="Download CSV"
+                class="px-2.5 py-1.5 text-xs text-gray-500 hover:text-slate-dark hover:bg-gray-150 rounded-lg transition-colors">
+          ↓ CSV
+        </button>
+        <button @click="exportJSON()"
+                title="Download JSON"
+                class="px-2.5 py-1.5 text-xs text-gray-500 hover:text-slate-dark hover:bg-gray-150 rounded-lg transition-colors">
+          ↓ JSON
+        </button>
+        <button @click="openProjects()"
+                class="ml-1 flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-500 hover:text-slate-dark hover:bg-gray-150 rounded-lg transition-colors">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+            <path fill-rule="evenodd" d="M2 3a1 1 0 011-1h3.586a1 1 0 01.707.293L8 3H13a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1V3z" clip-rule="evenodd"/>
+          </svg>
+          Projects
+        </button>
+      </nav>
+    </header>
+
+    <!-- Timer card ──────────────────────────────────────────────────────── -->
+    <section class="bg-white rounded-2xl border border-gray-150 shadow-sm p-5 mb-3">
+
+      <!-- Inputs row -->
+      <div class="flex gap-2 mb-4">
+        <!-- Description -->
+        <input x-model="timerDesc"
+               :disabled="!!running"
+               @keydown.enter="!running && startTimer()"
+               type="text"
+               placeholder="What are you working on?"
+               class="flex-1 min-w-0 bg-gray-150 rounded-xl px-3.5 py-2.5 text-sm
+                      placeholder-gray-500 outline-none transition
+                      focus:ring-2 focus:ring-clay/40
+                      disabled:opacity-50 disabled:cursor-not-allowed" />
+
+        <!-- Project with autocomplete -->
+        <div class="relative w-32 flex-shrink-0">
+          <input x-model="timerProject"
+                 :disabled="!!running"
+                 @focus="suggest = 'timer'"
+                 @blur="$nextTick(() => suggest = null)"
+                 @keydown.escape="suggest = null"
+                 type="text"
+                 placeholder="Project"
+                 class="w-full bg-gray-150 rounded-xl px-3.5 py-2.5 text-sm
+                        placeholder-gray-500 outline-none transition
+                        focus:ring-2 focus:ring-clay/40
+                        disabled:opacity-50 disabled:cursor-not-allowed" />
+          <template x-if="suggest === 'timer'">
+            <div x-show="filteredProjects('timer').length > 0"
+                 class="absolute z-30 top-full mt-1 left-0 right-0
+                        bg-white border border-gray-150 rounded-xl shadow-lg py-1">
+              <template x-for="p in filteredProjects('timer')" :key="p.id">
+                <button @mousedown.prevent="pickProject(p.name, 'timer')"
+                        class="w-full px-3 py-2 text-left text-sm flex items-center gap-2
+                               hover:bg-gray-150 transition-colors">
+                  <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        :style="`background:${p.color}`"></span>
+                  <span x-text="p.name" class="truncate"></span>
+                </button>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Elapsed + Start/Stop -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span x-show="running"
+                class="w-2 h-2 bg-clay rounded-full pulsing"
+                x-transition></span>
+          <span x-text="elapsed"
+                class="font-mono text-3xl font-semibold tabular-nums leading-none transition-colors"
+                :class="running ? 'text-clay' : 'text-gray-300'"></span>
+        </div>
+
+        <button @click="running ? stopTimer() : startTimer()"
+                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all"
+                :class="running
+                  ? 'bg-red-50 text-red-600 hover:bg-red-100 ring-1 ring-red-200'
+                  : 'bg-clay text-white hover:brightness-110 shadow-sm'">
+          <template x-if="!running">
+            <svg class="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M5 3.5v9L13 8 5 3.5z"/>
+            </svg>
+          </template>
+          <template x-if="running">
+            <svg class="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="4" y="4" width="8" height="8" rx="1.5"/>
+            </svg>
+          </template>
+          <span x-text="running ? 'Stop' : 'Start'"></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Manual entry toggle ─────────────────────────────────────────────── -->
+    <button @click="showManual = !showManual"
+            class="flex items-center gap-1.5 px-1 py-1 mb-1 text-xs text-gray-500
+                   hover:text-gray-700 transition-colors">
+      <svg class="w-3.5 h-3.5 transition-transform duration-150"
+           :class="showManual ? 'rotate-90' : ''"
+           viewBox="0 0 16 16" fill="currentColor">
+        <path fill-rule="evenodd"
+              d="M6.22 4.22a.75.75 0 011.06 0l3.25 3.25a.75.75 0 010 1.06l-3.25 3.25a.75.75 0 01-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 010-1.06z"
+              clip-rule="evenodd"/>
+      </svg>
+      Add manual entry
+    </button>
+
+    <!-- Manual entry card ──────────────────────────────────────────────── -->
+    <section x-show="showManual"
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 -translate-y-1"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-100"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="bg-white rounded-2xl border border-gray-150 shadow-sm p-5 mb-5">
+      <div class="space-y-3">
+        <input x-model="manualDesc"
+               type="text"
+               placeholder="Description"
+               class="w-full bg-gray-150 rounded-xl px-3.5 py-2.5 text-sm
+                      placeholder-gray-500 outline-none transition focus:ring-2 focus:ring-clay/40" />
+
+        <div class="relative">
+          <input x-model="manualProject"
+                 @focus="suggest = 'manual'"
+                 @blur="$nextTick(() => suggest = null)"
+                 @keydown.escape="suggest = null"
+                 type="text"
+                 placeholder="Project (optional)"
+                 class="w-full bg-gray-150 rounded-xl px-3.5 py-2.5 text-sm
+                        placeholder-gray-500 outline-none transition focus:ring-2 focus:ring-clay/40" />
+          <template x-if="suggest === 'manual'">
+            <div x-show="filteredProjects('manual').length > 0"
+                 class="absolute z-30 top-full mt-1 left-0 right-0
+                        bg-white border border-gray-150 rounded-xl shadow-lg py-1">
+              <template x-for="p in filteredProjects('manual')" :key="p.id">
+                <button @mousedown.prevent="pickProject(p.name, 'manual')"
+                        class="w-full px-3 py-2 text-left text-sm flex items-center gap-2
+                               hover:bg-gray-150 transition-colors">
+                  <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        :style="`background:${p.color}`"></span>
+                  <span x-text="p.name" class="truncate"></span>
+                </button>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1.5">Start</label>
+            <input x-model="manualStart" type="datetime-local"
+                   class="w-full bg-gray-150 rounded-xl px-3 py-2 text-xs
+                          outline-none transition focus:ring-2 focus:ring-clay/40" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1.5">End</label>
+            <input x-model="manualEnd" type="datetime-local"
+                   class="w-full bg-gray-150 rounded-xl px-3 py-2 text-xs
+                          outline-none transition focus:ring-2 focus:ring-clay/40" />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end mt-4">
+        <button @click="addManual()"
+                class="px-4 py-2 bg-slate-dark text-ivory text-sm font-medium
+                       rounded-xl hover:bg-gray-700 transition-colors">
+          Add Entry
+        </button>
+      </div>
+    </section>
+
+    <!-- Period filter + total ────────────────────────────────────────────── -->
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex gap-1 bg-gray-150 rounded-xl p-1">
+        <template x-for="opt in ['today','week','month','all']" :key="opt">
+          <button @click="period = opt; refresh()"
+                  class="px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all"
+                  :class="period === opt
+                    ? 'bg-white text-slate-dark shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'">
+            <span x-text="opt"></span>
+          </button>
+        </template>
+      </div>
+      <span class="text-xs text-gray-500 tabular-nums"
+            x-text="'Total: ' + fmtShort(periodTotal)"></span>
+    </div>
+
+    <!-- Project summary bars ────────────────────────────────────────────── -->
+    <div x-show="projects.some(p => Number(p.total_ms) > 0)" class="mb-8">
+      <h2 class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-3">
+        Projects
+      </h2>
+      <div class="space-y-3">
+        <template x-for="p in projects.filter(p => Number(p.total_ms) > 0)" :key="p.id">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      :style="`background:${p.color}`"></span>
+                <span class="text-sm text-gray-700" x-text="p.name"></span>
+              </div>
+              <span class="text-xs tabular-nums text-gray-500"
+                    x-text="fmtShort(p.total_ms)"></span>
+            </div>
+            <div class="h-1.5 bg-gray-150 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500"
+                   :style="`width:${(Number(p.total_ms) / maxProjectMs * 100).toFixed(1)}%; background:${p.color}`">
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Entries list ─────────────────────────────────────────────────────── -->
+    <div>
+      <!-- Empty state -->
+      <div x-show="ready && grouped.length === 0"
+           class="py-16 text-center text-sm text-gray-500 space-y-1">
+        <p>No entries yet.</p>
+        <p class="text-xs">Start the timer or add a manual entry above.</p>
+      </div>
+
+      <!-- Day groups -->
+      <template x-for="group in grouped" :key="group.label">
+        <div class="mb-7">
+          <div class="flex items-center justify-between px-1 mb-2">
+            <span class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest"
+                  x-text="group.label"></span>
+            <span class="text-xs tabular-nums text-gray-500"
+                  x-text="fmtShort(group.totalMs)"></span>
+          </div>
+
+          <div class="space-y-1.5">
+            <template x-for="e in group.entries" :key="e.id">
+              <article @click="openEdit(e)"
+                       class="flex items-center gap-3 px-4 py-3.5 bg-white rounded-xl
+                              border border-gray-150 hover:border-gray-300
+                              cursor-pointer transition-colors group">
+                <!-- Project dot -->
+                <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      :style="`background:${e.project_color || '#D1CFC5'}`"></span>
+
+                <!-- Description + project label -->
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-slate-dark truncate"
+                     x-text="e.name || '—'"></p>
+                  <p x-show="e.project_name"
+                     class="text-xs text-gray-500 truncate"
+                     x-text="e.project_name"></p>
+                </div>
+
+                <!-- Time range + duration -->
+                <div class="text-right flex-shrink-0">
+                  <p class="text-xs text-gray-500 tabular-nums">
+                    <span x-text="fmtTime(e.started_at)"></span>
+                    <span class="mx-0.5 opacity-50">–</span>
+                    <span x-text="fmtTime(e.ended_at)"></span>
+                  </p>
+                  <p class="text-sm font-medium tabular-nums"
+                     x-text="fmtShort(Number(e.ended_at) - Number(e.started_at))"></p>
+                </div>
+
+                <!-- Chevron hint -->
+                <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 group-hover:text-gray-400 transition-colors"
+                     viewBox="0 0 16 16" fill="currentColor">
+                  <path fill-rule="evenodd"
+                        d="M9.78 4.22a.75.75 0 010 1.06L7.06 8l2.72 2.72a.75.75 0 11-1.06 1.06L5.47 8.53a.75.75 0 010-1.06l3.25-3.25a.75.75 0 011.06 0z"
+                        clip-rule="evenodd"/>
+                </svg>
+              </article>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div><!-- end app shell -->
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Edit entry dialog
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <dialog x-ref="editDialog"
+          @close="editOpen = false"
+          class="w-full max-w-sm rounded-2xl border border-gray-150 shadow-2xl p-0">
+    <form method="dialog" class="hidden"></form><!-- enables Escape key -->
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-base font-semibold">Edit Entry</h2>
+        <button type="button" @click="$refs.editDialog.close()"
+                class="w-7 h-7 flex items-center justify-center rounded-lg
+                       text-gray-500 hover:text-slate-dark hover:bg-gray-150 transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+            <path fill-rule="evenodd"
+                  d="M4.28 4.28a.75.75 0 011.06 0L8 6.94l2.66-2.66a.75.75 0 011.06 1.06L9.06 8l2.66 2.66a.75.75 0 01-1.06 1.06L8 9.06l-2.66 2.66a.75.75 0 01-1.06-1.06L6.94 8 4.28 5.34a.75.75 0 010-1.06z"
+                  clip-rule="evenodd"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1.5">Description</label>
+          <input x-model="editDesc" type="text"
+                 class="w-full bg-gray-150 rounded-xl px-3.5 py-2.5 text-sm
+                        outline-none transition focus:ring-2 focus:ring-clay/40" />
+        </div>
+
+        <div class="relative">
+          <label class="block text-xs text-gray-500 mb-1.5">Project</label>
+          <input x-model="editProject"
+                 @focus="suggest = 'edit'"
+                 @blur="$nextTick(() => suggest = null)"
+                 @keydown.escape="suggest = null"
+                 type="text"
+                 placeholder="Optional"
+                 class="w-full bg-gray-150 rounded-xl px-3.5 py-2.5 text-sm
+                        outline-none transition focus:ring-2 focus:ring-clay/40" />
+          <template x-if="suggest === 'edit'">
+            <div x-show="filteredProjects('edit').length > 0"
+                 class="absolute z-30 top-full mt-1 left-0 right-0
+                        bg-white border border-gray-150 rounded-xl shadow-lg py-1">
+              <template x-for="p in filteredProjects('edit')" :key="p.id">
+                <button @mousedown.prevent="pickProject(p.name, 'edit')"
+                        class="w-full px-3 py-2 text-left text-sm flex items-center gap-2
+                               hover:bg-gray-150 transition-colors">
+                  <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        :style="`background:${p.color}`"></span>
+                  <span x-text="p.name" class="truncate"></span>
+                </button>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1.5">Start</label>
+            <input x-model="editStart" type="datetime-local"
+                   class="w-full bg-gray-150 rounded-xl px-3 py-2 text-xs
+                          outline-none transition focus:ring-2 focus:ring-clay/40" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1.5">End</label>
+            <input x-model="editEnd" type="datetime-local"
+                   class="w-full bg-gray-150 rounded-xl px-3 py-2 text-xs
+                          outline-none transition focus:ring-2 focus:ring-clay/40" />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between mt-6 pt-4 border-t border-gray-150">
+        <button type="button" @click="deleteEdit()"
+                class="text-sm text-red-500 hover:text-red-700 transition-colors">
+          Delete
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" @click="$refs.editDialog.close()"
+                  class="px-3 py-2 text-sm text-gray-500 hover:text-slate-dark transition-colors">
+            Cancel
+          </button>
+          <button type="button" @click="saveEdit()"
+                  class="px-4 py-2 bg-clay text-white text-sm font-medium
+                         rounded-xl hover:brightness-110 transition-all shadow-sm">
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Projects dialog
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <dialog x-ref="projectsDialog"
+          @close="projectsOpen = false"
+          class="w-full max-w-sm rounded-2xl border border-gray-150 shadow-2xl p-0">
+    <form method="dialog" class="hidden"></form>
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-base font-semibold">Projects</h2>
+        <button type="button" @click="$refs.projectsDialog.close()"
+                class="w-7 h-7 flex items-center justify-center rounded-lg
+                       text-gray-500 hover:text-slate-dark hover:bg-gray-150 transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+            <path fill-rule="evenodd"
+                  d="M4.28 4.28a.75.75 0 011.06 0L8 6.94l2.66-2.66a.75.75 0 011.06 1.06L9.06 8l2.66 2.66a.75.75 0 01-1.06 1.06L8 9.06l-2.66 2.66a.75.75 0 01-1.06-1.06L6.94 8 4.28 5.34a.75.75 0 010-1.06z"
+                  clip-rule="evenodd"/>
+          </svg>
+        </button>
+      </div>
+
+      <p x-show="projects.length === 0"
+         class="text-sm text-gray-500 text-center py-6">
+        No projects yet. They're created automatically when you type a project name.
+      </p>
+
+      <div class="divide-y divide-gray-150">
+        <template x-for="p in projects" :key="p.id">
+          <div class="flex items-center gap-3 py-2.5">
+            <input type="color"
+                   :value="p.color || '#788C5D'"
+                   @change="send('updateProject', { id: p.id, name: p.name, color: $event.target.value })"
+                   class="w-7 h-7 rounded-lg cursor-pointer border border-gray-150 p-0.5 bg-gray-150 flex-shrink-0" />
+            <span class="flex-1 text-sm" x-text="p.name"></span>
+            <span class="text-xs tabular-nums text-gray-500 w-12 text-right"
+                  x-text="fmtShort(p.total_ms)"></span>
+            <button type="button" @click="deleteProject(p.id)"
+                    class="w-6 h-6 flex items-center justify-center rounded-lg
+                           text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                <path fill-rule="evenodd"
+                      d="M4.28 4.28a.75.75 0 011.06 0L8 6.94l2.66-2.66a.75.75 0 011.06 1.06L9.06 8l2.66 2.66a.75.75 0 01-1.06 1.06L8 9.06l-2.66 2.66a.75.75 0 01-1.06-1.06L6.94 8 4.28 5.34a.75.75 0 010-1.06z"
+                      clip-rule="evenodd"/>
+              </svg>
+            </button>
+          </div>
+        </template>
+      </div>
+
+      <div class="flex items-center justify-between mt-5 pt-4 border-t border-gray-150">
+        <span class="text-xs text-gray-500">Export all entries</span>
+        <div class="flex gap-2">
+          <button type="button" @click="exportCSV(); $refs.projectsDialog.close()"
+                  class="px-3 py-1.5 text-xs border border-gray-300 text-gray-700
+                         hover:bg-gray-150 rounded-lg transition-colors">
+            CSV
+          </button>
+          <button type="button" @click="exportJSON(); $refs.projectsDialog.close()"
+                  class="px-3 py-1.5 text-xs border border-gray-300 text-gray-700
+                         hover:bg-gray-150 rounded-lg transition-colors">
+            JSON
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Toast
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div x-show="toast"
+       x-transition
+       class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2.5
+              rounded-xl shadow-lg text-sm font-medium toast-in pointer-events-none"
+       :class="toast?.type === 'error'
+         ? 'bg-red-600 text-white'
+         : 'bg-slate-dark text-ivory'"
+       x-text="toast?.message">
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       Alpine component
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <script>
+  function app() {
+    return {
+      // ── DB ──────────────────────────────────────────────────────────────
+      ready:    false,
+      worker:   null,
+
+      // ── Data ────────────────────────────────────────────────────────────
+      entries:  [],     // {id, name, started_at, ended_at, project_id, project_name, project_color}
+      projects: [],     // {id, name, color, total_ms}
+      running:  null,   // {id, name, started_at, project_id, project_name}
+
+      // ── Timer form ──────────────────────────────────────────────────────
+      timerDesc:    '',
+      timerProject: '',
+      elapsed:      '00:00:00',
+      _tick:        null,
+
+      // ── Manual entry ────────────────────────────────────────────────────
+      showManual:   false,
+      manualDesc:   '',
+      manualProject:'',
+      manualStart:  '',
+      manualEnd:    '',
+
+      // ── Period filter ────────────────────────────────────────────────────
+      period: 'today',   // 'today' | 'week' | 'month' | 'all'
+
+      // ── Edit dialog ──────────────────────────────────────────────────────
+      editOpen:    false,
+      editTarget:  null,
+      editDesc:    '',
+      editProject: '',
+      editStart:   '',
+      editEnd:     '',
+
+      // ── Projects dialog ──────────────────────────────────────────────────
+      projectsOpen: false,
+
+      // ── Autocomplete ────────────────────────────────────────────────────
+      suggest: null,   // 'timer' | 'manual' | 'edit' | null
+
+      // ── Toast ────────────────────────────────────────────────────────────
+      toast:       null,
+      _toastTimer: null,
+
+      // ── Init ─────────────────────────────────────────────────────────────
+      init() {
+        this.worker = new Worker('./worker.js', { type: 'module' });
+        this.worker.onmessage  = ({ data }) => this.handle(data);
+        this.worker.onerror    = (e)        => this.notify('Worker error: ' + e.message, 'error');
+      },
+
+      // ── Worker bridge ────────────────────────────────────────────────────
+      send(action, payload = {}) {
+        this.worker.postMessage({ action, payload });
+      },
+
+      handle({ action, payload }) {
+        switch (action) {
+
+          case 'ready':
+            this.send('getRunningEntry');
+            this.send('getProjects');
+            this.refresh();
+            this.ready = true;
+            break;
+
+          case 'entries':
+            this.entries = payload;
+            break;
+
+          case 'projects':
+            this.projects = payload;
+            break;
+
+          case 'runningEntry':
+            this.running = payload;
+            if (payload) {
+              this.timerDesc    = payload.name        ?? '';
+              this.timerProject = payload.project_name ?? '';
+              this._startTick();
+            }
+            break;
+
+          case 'timerStarted':
+            this.send('getRunningEntry');
+            this._startTick();
+            this.refresh();
+            break;
+
+          case 'timerStopped':
+            this.running      = null;
+            this.timerDesc    = '';
+            this.timerProject = '';
+            this._stopTick();
+            this.elapsed = '00:00:00';
+            this.refresh();
+            this.send('getProjects');
+            this.notify('Timer stopped');
+            break;
+
+          case 'entrySaved':
+            this.manualDesc    = '';
+            this.manualProject = '';
+            this.manualStart   = '';
+            this.manualEnd     = '';
+            this.refresh();
+            this.send('getProjects');
+            this.notify('Entry saved');
+            break;
+
+          case 'entryUpdated':
+            this.$refs.editDialog?.close();
+            this.refresh();
+            this.send('getProjects');
+            this.notify('Entry updated');
+            break;
+
+          case 'entryDeleted':
+            this.$refs.editDialog?.close();
+            this.refresh();
+            this.send('getProjects');
+            this.notify('Entry deleted');
+            break;
+
+          case 'projectUpdated':
+            this.send('getProjects');
+            this.notify('Project updated');
+            break;
+
+          case 'projectDeleted':
+            this.send('getProjects');
+            this.refresh();
+            this.notify('Project deleted');
+            break;
+
+          case 'exportReady':
+            this._download(payload.data, payload.format);
+            this.notify('Export ready');
+            break;
+
+          case 'error':
+            this.notify(payload, 'error');
+            break;
+        }
+      },
+
+      refresh() {
+        this.send('getEntries', { period: this.period });
+      },
+
+      // ── Timer ─────────────────────────────────────────────────────────────
+      startTimer() {
+        this.send('startTimer', {
+          description: this.timerDesc,
+          project:     this.timerProject,
+        });
+      },
+
+      stopTimer() {
+        this.send('stopTimer');
+      },
+
+      _startTick() {
+        this._stopTick();
+        this._tick = setInterval(() => {
+          if (!this.running) { this._stopTick(); return; }
+          this.elapsed = this._fmtDuration(Date.now() - Number(this.running.started_at));
+        }, 1000);
+      },
+
+      _stopTick() {
+        if (this._tick) { clearInterval(this._tick); this._tick = null; }
+      },
+
+      // ── Manual entry ──────────────────────────────────────────────────────
+      addManual() {
+        if (!this.manualStart || !this.manualEnd) {
+          this.notify('Start and end times are required', 'error');
+          return;
+        }
+        const s = new Date(this.manualStart).getTime();
+        const e = new Date(this.manualEnd).getTime();
+        if (e <= s) {
+          this.notify('End must be after start', 'error');
+          return;
+        }
+        this.send('saveEntry', {
+          description: this.manualDesc,
+          project:     this.manualProject,
+          started_at:  s,
+          ended_at:    e,
+        });
+      },
+
+      // ── Edit dialog ───────────────────────────────────────────────────────
+      openEdit(entry) {
+        this.editTarget  = entry;
+        this.editDesc    = entry.name        ?? '';
+        this.editProject = entry.project_name ?? '';
+        this.editStart   = this._toLocalDt(entry.started_at);
+        this.editEnd     = entry.ended_at ? this._toLocalDt(entry.ended_at) : '';
+        this.editOpen    = true;
+        this.$refs.editDialog?.showModal();
+      },
+
+      saveEdit() {
+        if (!this.editTarget) return;
+        const s = new Date(this.editStart).getTime();
+        const e = this.editEnd ? new Date(this.editEnd).getTime() : null;
+        this.send('updateEntry', {
+          id:          this.editTarget.id,
+          description: this.editDesc,
+          project:     this.editProject,
+          started_at:  s,
+          ended_at:    e,
+        });
+      },
+
+      deleteEdit() {
+        if (!this.editTarget) return;
+        if (confirm('Delete this entry?')) {
+          this.send('deleteEntry', { id: this.editTarget.id });
+        }
+      },
+
+      // ── Projects dialog ───────────────────────────────────────────────────
+      openProjects() {
+        this.projectsOpen = true;
+        this.send('getProjects');
+        this.$refs.projectsDialog?.showModal();
+      },
+
+      deleteProject(id) {
+        if (confirm('Delete project? Entries will be unassigned.')) {
+          this.send('deleteProject', { id });
+        }
+      },
+
+      // ── Export ────────────────────────────────────────────────────────────
+      exportCSV()  { this.send('exportCSV');  },
+      exportJSON() { this.send('exportJSON'); },
+
+      _download(data, format) {
+        const mime = format === 'csv' ? 'text/csv' : 'application/json';
+        const url  = URL.createObjectURL(new Blob([data], { type: mime }));
+        const a    = Object.assign(document.createElement('a'), {
+          href:     url,
+          download: `localtrack-export.${format}`,
+        });
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+
+      // ── Autocomplete ──────────────────────────────────────────────────────
+      filteredProjects(field) {
+        const val = field === 'timer'  ? this.timerProject
+                  : field === 'manual' ? this.manualProject
+                  :                     this.editProject;
+        const q = (val ?? '').toLowerCase();
+        const list = q
+          ? this.projects.filter(p => p.name.toLowerCase().includes(q))
+          : this.projects;
+        return list.slice(0, 6);
+      },
+
+      pickProject(name, field) {
+        if (field === 'timer')       this.timerProject   = name;
+        else if (field === 'manual') this.manualProject  = name;
+        else                         this.editProject    = name;
+        this.suggest = null;
+      },
+
+      // ── Toast ─────────────────────────────────────────────────────────────
+      notify(message, type = 'success') {
+        if (this._toastTimer) clearTimeout(this._toastTimer);
+        this.toast       = { message, type };
+        this._toastTimer = setTimeout(() => { this.toast = null; }, 3000);
+      },
+
+      // ── Computed ──────────────────────────────────────────────────────────
+      get grouped() {
+        const map = new Map();
+        for (const e of this.entries) {
+          if (e.ended_at === null) continue; // skip running entry in list
+          const day = new Date(Number(e.started_at)).toLocaleDateString('en-US', {
+            weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+          });
+          if (!map.has(day)) map.set(day, { label: day, totalMs: 0, entries: [] });
+          const g = map.get(day);
+          g.entries.push(e);
+          g.totalMs += Number(e.ended_at) - Number(e.started_at);
+        }
+        return [...map.values()];
+      },
+
+      get periodTotal() {
+        return this.entries
+          .filter(e => e.ended_at !== null)
+          .reduce((sum, e) => sum + Number(e.ended_at) - Number(e.started_at), 0);
+      },
+
+      get maxProjectMs() {
+        return Math.max(...this.projects.map(p => Number(p.total_ms)), 1);
+      },
+
+      // ── Formatting helpers ────────────────────────────────────────────────
+      fmtShort(ms) {
+        const totalMin = Math.floor(Number(ms) / 60_000);
+        if (totalMin < 1)  return '< 1m';
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        return h > 0 ? `${h}h ${m}m` : `${m}m`;
+      },
+
+      fmtTime(ts) {
+        return new Date(Number(ts)).toLocaleTimeString('en-US', {
+          hour:   '2-digit',
+          minute: '2-digit',
+        });
+      },
+
+      _fmtDuration(ms) {
+        const s = Math.floor(ms / 1000);
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        return [h, m, sec].map(v => String(v).padStart(2, '0')).join(':');
+      },
+
+      _toLocalDt(ts) {
+        const d = new Date(Number(ts));
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+             + `T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      },
+    };
+  }
+  </script>
+
+</body>
+</html>

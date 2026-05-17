@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en" x-data x-bind:class="{ dark: $store.theme.dark }">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Implementation plan — Comment threads on task cards</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @custom-variant dark (&:where(.dark, .dark *));
+    @theme {
+      --color-ivory: #FAF9F5;
+      --color-slate-dark: #141413;
+      --color-clay: #D97757;
+      --color-oat: #E3DACC;
+      --color-olive: #788C5D;
+      --color-gray-150: #F0EEE6;
+      --color-gray-300: #D1CFC5;
+      --color-gray-500: #87867F;
+      --color-gray-700: #3D3D3A;
+    --color-gray-800: #252522;
+    --color-gray-900: #181816;
+      --color-rust: #B04A3F;
+      --font-serif: ui-serif, Georgia, 'Times New Roman', serif;
+      --font-mono: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+    }
+
+    [x-cloak] { display: none; }
+
+    .kw  { color: #D97757; }
+    .str { color: #788C5D; }
+    .cm  { color: #87867F; }
+    .fn  { color: #C9B98A; }
+
+    .diagram text { font-family: ui-monospace, 'SF Mono', Menlo, Monaco, monospace; }
+
+    code { font-family: ui-monospace, 'SF Mono', Menlo, Monaco, monospace; }
+  </style>
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="font-sans bg-ivory dark:bg-slate-dark text-gray-700 dark:text-gray-300 leading-[1.55] py-14 px-4 md:px-8 pb-[120px] antialiased">
+  <button @click="$store.theme.toggle()"
+          class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+          :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+          x-text="$store.theme.dark ? '&#9728;' : '&#9790;'">
+  </button>
+  <div class="max-w-[1120px] mx-auto">
+
+    <header class="mb-12 max-w-[820px]">
+      <div class="text-xs tracking-[0.08em] uppercase text-gray-500 mb-3">Implementation plan · Acme web client</div>
+      <h1 class="font-serif font-medium text-[26px] md:text-[38px] leading-[1.15] text-slate-dark dark:text-ivory mb-[18px] tracking-[-0.01em]">Comment threads on task cards</h1>
+      <div class="bg-gray-150 dark:bg-gray-700 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-xl py-4 px-5 text-[14.5px] text-gray-700 dark:text-gray-300">
+        <span class="font-mono text-[11px] uppercase tracking-[0.06em] text-gray-500 block mb-1.5">Prompt</span>
+        Create a thorough implementation plan for adding threaded comments to
+        task cards. Include mockups, the data flow from client to persistence,
+        the key code I'll need to write, and a risk table. Make it easy to
+        skim on a phone — I'm going to pass this to the implementer as-is.
+      </div>
+    </header>
+
+    <div class="grid grid-cols-4 gap-4 mb-16 max-[900px]:grid-cols-2">
+      <div class="bg-white dark:bg-gray-800 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-xl py-[18px] px-5">
+        <div class="font-mono text-[11px] uppercase tracking-[0.06em] text-gray-500 mb-1.5">Effort</div>
+        <div class="text-[17px] font-semibold text-clay">~2 weeks</div>
+      </div>
+      <div class="bg-white dark:bg-gray-800 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-xl py-[18px] px-5">
+        <div class="font-mono text-[11px] uppercase tracking-[0.06em] text-gray-500 mb-1.5">Surfaces touched</div>
+        <div class="text-[17px] text-slate-dark dark:text-ivory font-semibold">3 packages</div>
+      </div>
+      <div class="bg-white dark:bg-gray-800 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-xl py-[18px] px-5">
+        <div class="font-mono text-[11px] uppercase tracking-[0.06em] text-gray-500 mb-1.5">New tables</div>
+        <div class="text-[17px] text-slate-dark dark:text-ivory font-semibold">2</div>
+      </div>
+      <div class="bg-white dark:bg-gray-800 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-xl py-[18px] px-5">
+        <div class="font-mono text-[11px] uppercase tracking-[0.06em] text-gray-500 mb-1.5">Feature flag</div>
+        <div class="text-[17px] text-slate-dark dark:text-ivory font-semibold">task_comments_v1</div>
+      </div>
+    </div>
+
+    <section class="mb-16">
+      <div class="flex items-baseline gap-3.5 mb-2">
+        <span class="font-mono text-xs bg-oat dark:bg-gray-700 text-slate-dark dark:text-ivory py-[3px] px-[9px] rounded-lg">01</span>
+        <h2 class="font-serif font-medium text-[26px] text-slate-dark dark:text-ivory tracking-[-0.01em]">Milestones</h2>
+      </div>
+      <p class="text-[14.5px] text-gray-500 max-w-[720px] mb-7">Ship in four slices, each independently reviewable and each behind the flag. Nothing is user-visible until slice&nbsp;4.</p>
+
+      <div class="flex flex-col">
+
+        <div class="grid grid-cols-[120px_28px_1fr] gap-x-[18px] relative">
+          <div class="text-right font-mono text-xs text-gray-500 pt-1">Week&nbsp;1 · Mon–Tue</div>
+          <div class="flex flex-col items-center">
+            <span class="w-3.5 h-3.5 rounded-full bg-olive border-[3px] border-olive mt-1 shrink-0"></span>
+            <span class="w-0.5 flex-1 bg-gray-300 dark:bg-gray-600 my-1"></span>
+          </div>
+          <div class="pb-9">
+            <h3 class="font-serif font-medium text-[19px] text-slate-dark dark:text-ivory mb-1">Schema &amp; API contract</h3>
+            <p class="text-sm text-gray-500 mb-2.5 max-w-[620px]">New <code>comments</code> and <code>comment_reads</code> tables, migrations, and the tRPC router stubs. No UI. Contract reviewed before anything else lands.</p>
+            <div class="flex gap-2 flex-wrap">
+              <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 [border:1px_solid_#D1CFC5] dark:border-gray-600 rounded-[6px] py-[3px] px-2 text-gray-700 dark:text-gray-300">packages/db</span>
+              <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 [border:1px_solid_#D1CFC5] dark:border-gray-600 rounded-[6px] py-[3px] px-2 text-gray-700 dark:text-gray-300">packages/api</span>
+              <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 [border:1px_solid_#D1CFC5] dark:border-gray-600 rounded-[6px] py-[3px] px-2 text-gray-700 dark:text-gray-300">migration 0042</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-[120px_28px_1fr] gap-x-[18px] relative">
+          <div class="text-right font-mono text-xs text-gray-500 pt-1">Week&nbsp;1 · Wed–Fri</div>
+          <div class="flex flex-col items-center">
+            <span class="w-3.5 h-3.5 rounded-full bg-white dark:bg-slate-dark border-[3px] border-clay mt-1 shrink-0"></span>
+            <span class="w-0.5 flex-1 bg-gray-300 dark:bg-gray-600 my-1"></span>
+          </div>
+          <div class="pb-9">
+            <h3 class="font-serif font-medium text-[19px] text-slate-dark dark:text-ivory mb-1">Thread component &amp; composer</h3>
+            <p class="text-sm text-gray-500 mb-2.5 max-w-[620px]">Static <code>&lt;CommentThread&gt;</code> rendered from fixtures. Optimistic insert on submit, rollback on failure, one level of nesting only.</p>
+            <div class="flex gap-2 flex-wrap">
+              <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 [border:1px_solid_#D1CFC5] dark:border-gray-600 rounded-[6px] py-[3px] px-2 text-gray-700 dark:text-gray-300">apps/web</span>
+              <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 [border:1px_solid_#D1CFC5] dark:border-gray-600 rounded-[6px] py-[3px] px-2 text-gray-700 dark:text-gray-300">storybook</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-[120px_28px_1fr] gap-x-[18px] relative">
+          <div class="text-right font-mono text-xs text-gray-500 pt-1">Week&nbsp;2 · Mon–Wed</div>
+          <div class="flex flex-col items-center">
+            <span class="w-3.5 h-3.5 rounded-full bg-white dark:bg-slate-dark border-[3px] border-clay mt-1 shrink-0"></span>
+            <span class="w-0.5 flex-1 bg-gray-300 dark:bg-gray-600 my-1"></span>
+          </div>
+          <div class="pb-9">
+            <h3 class="font-serif font-medium text-[19px] text-slate-dark dark:text-ivory mb-1">Realtime fan-out &amp; unread state</h3>
+            <p class="text-sm text-gray-500 mb-2.5 max-w-[620px]">Subscribe the open card to its comment channel. Track per-user read cursors so the sidebar can show an unread count without a second query.</p>
+            <div class="flex gap-2 flex-wrap">
+              <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 [border:1px_solid_#D1CFC5] dark:border-gray-600 rounded-[6px] py-[3px] px-2 text-gray-700 dark:text-gray-300">packages/realtime</span>
+              <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 [border:1px_solid_#D1CFC5] dark:border-gray-600 rounded-[6px] py-[3px] px-2 text-gray-700 dark:text-gray-300">apps/web</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-[120px_28px_1fr] gap-x-[18px] relative">
+          <div class="text-right font-mono text-xs text-gray-500 pt-1">Week&nbsp;2 · Thu–Fri</div>
+          <div class="flex flex-col items-center">
+            <span class="w-3.5 h-3.5 rounded-full bg-white dark:bg-slate-dark border-[3px] border-clay mt-1 shrink-0"></span>
+          </div>
+          <div class="pb-9">
+            <h3 class="font-serif font-medium text-[19px] text-slate-dark dark:text-ivory mb-1">Notifications, flag ramp, docs</h3>
+            <p class="text-sm text-gray-500 mb-2.5 max-w-[620px]">Mention detection → notification row, email digest fallback, ramp <code>task_comments_v1</code> to internal, then 10% → 100% over three days.</p>
+            <div class="flex gap-2 flex-wrap">
+              <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 [border:1px_solid_#D1CFC5] dark:border-gray-600 rounded-[6px] py-[3px] px-2 text-gray-700 dark:text-gray-300">packages/notify</span>
+              <span class="font-mono text-[11.5px] bg-gray-150 dark:bg-gray-700 [border:1px_solid_#D1CFC5] dark:border-gray-600 rounded-[6px] py-[3px] px-2 text-gray-700 dark:text-gray-300">growthbook</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="mb-16">
+      <div class="flex items-baseline gap-3.5 mb-2">
+        <span class="font-mono text-xs bg-oat dark:bg-gray-700 text-slate-dark dark:text-ivory py-[3px] px-[9px] rounded-lg">02</span>
+        <h2 class="font-serif font-medium text-[26px] text-slate-dark dark:text-ivory tracking-[-0.01em]">Data flow</h2>
+      </div>
+      <p class="text-[14.5px] text-gray-500 max-w-[720px] mb-7">Optimistic write path on the left, fan-out on the right. The read cursor update is fire-and-forget — we never block the thread render on it.</p>
+
+      <div class="diagram bg-white dark:bg-gray-800 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-xl p-7 overflow-x-auto">
+        <svg viewBox="0 0 860 340" xmlns="http://www.w3.org/2000/svg" class="block min-w-[760px]">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#87867F"/>
+            </marker>
+            <marker id="arrowClay" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#D97757"/>
+            </marker>
+          </defs>
+
+          <g font-size="12" fill="#141413">
+            <rect x="20"  y="20"  width="180" height="54" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+            <text x="110" y="43" text-anchor="middle" font-weight="600">&lt;CommentComposer&gt;</text>
+            <text x="110" y="60" text-anchor="middle" fill="#87867F" font-size="10.5">apps/web</text>
+
+            <rect x="20"  y="150" width="180" height="54" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+            <text x="110" y="173" text-anchor="middle" font-weight="600">React Query cache</text>
+            <text x="110" y="190" text-anchor="middle" fill="#87867F" font-size="10.5">optimistic insert</text>
+
+            <rect x="340" y="150" width="180" height="54" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+            <text x="430" y="173" text-anchor="middle" font-weight="600">comments.create</text>
+            <text x="430" y="190" text-anchor="middle" fill="#87867F" font-size="10.5">tRPC · packages/api</text>
+
+            <rect x="340" y="266" width="180" height="54" rx="10" fill="#141413" stroke="#141413"/>
+            <text x="430" y="289" text-anchor="middle" font-weight="600" fill="#FAF9F5">comments table</text>
+            <text x="430" y="306" text-anchor="middle" fill="#C9B98A" font-size="10.5">postgres · packages/db</text>
+
+            <rect x="660" y="150" width="180" height="54" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+            <text x="750" y="173" text-anchor="middle" font-weight="600">realtime channel</text>
+            <text x="750" y="190" text-anchor="middle" fill="#87867F" font-size="10.5">task:{id}:comments</text>
+
+            <rect x="660" y="20"  width="180" height="54" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+            <text x="750" y="43" text-anchor="middle" font-weight="600">Other viewers</text>
+            <text x="750" y="60" text-anchor="middle" fill="#87867F" font-size="10.5">subscribed cards</text>
+
+            <rect x="660" y="266" width="180" height="54" rx="10" fill="#FFFFFF" stroke="#D1CFC5" stroke-width="1.5"/>
+            <text x="750" y="289" text-anchor="middle" font-weight="600">notify worker</text>
+            <text x="750" y="306" text-anchor="middle" fill="#87867F" font-size="10.5">@mentions → queue</text>
+          </g>
+
+          <g stroke="#87867F" stroke-width="1.5" fill="none">
+            <path d="M110 74 L110 150" marker-end="url(#arrow)"/>
+            <path d="M200 177 L340 177" marker-end="url(#arrow)"/>
+            <path d="M430 204 L430 266" marker-end="url(#arrow)"/>
+            <path d="M520 293 L660 293" marker-end="url(#arrow)"/>
+          </g>
+          <g stroke="#D97757" stroke-width="1.5" fill="none" stroke-dasharray="5 4">
+            <path d="M520 177 L660 177" marker-end="url(#arrowClay)"/>
+            <path d="M750 150 L750 74" marker-end="url(#arrowClay)"/>
+            <path d="M660 162 C 540 120, 280 120, 205 162" marker-end="url(#arrowClay)"/>
+          </g>
+
+          <g font-size="10.5" fill="#87867F">
+            <text x="118" y="118">submit (id=temp)</text>
+            <text x="240" y="170">mutate</text>
+            <text x="438" y="240">INSERT + read cursor</text>
+            <text x="548" y="286">enqueue</text>
+            <text x="548" y="172" fill="#D97757">broadcast row</text>
+            <text x="758" y="118" fill="#D97757">live append</text>
+            <text x="360" y="112" fill="#D97757">reconcile temp id → real id</text>
+          </g>
+        </svg>
+        <p class="text-[13px] text-gray-500 mt-3">Solid = request/response path. Dashed clay = realtime fan-out. The composer never waits on the dashed path.</p>
+      </div>
+    </section>
+
+    <section class="mb-16">
+      <div class="flex items-baseline gap-3.5 mb-2">
+        <span class="font-mono text-xs bg-oat dark:bg-gray-700 text-slate-dark dark:text-ivory py-[3px] px-[9px] rounded-lg">03</span>
+        <h2 class="font-serif font-medium text-[26px] text-slate-dark dark:text-ivory tracking-[-0.01em]">Mockups</h2>
+      </div>
+      <p class="text-[14.5px] text-gray-500 max-w-[720px] mb-7">Not pixel-final — just enough that the reviewer and I agree on nesting depth, composer placement, and what the sidebar digest looks like.</p>
+
+      <div class="grid grid-cols-2 gap-7 max-[900px]:grid-cols-1">
+
+        <div class="bg-white dark:bg-gray-800 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-xl overflow-hidden">
+          <div class="py-3 px-[18px] [border-bottom:1.5px_solid_#D1CFC5] dark:border-gray-600 font-mono text-[11.5px] uppercase tracking-[0.06em] text-gray-500 bg-gray-150 dark:bg-gray-700">A · Thread inside an open task card</div>
+          <div class="p-[22px]">
+            <div class="[border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-[10px] p-4 bg-ivory dark:bg-slate-dark">
+              <div class="font-semibold text-[15px] text-slate-dark dark:text-ivory mb-1">Ship onboarding empty-state rewrite</div>
+              <div class="text-xs text-gray-500 mb-[14px]">BIR-1142 · Assigned to Priya · Due Fri</div>
+              <div class="border-t border-dashed border-gray-300 dark:border-gray-600 my-[14px]"></div>
+              <div class="flex flex-col gap-3">
+                <div class="flex gap-[10px]">
+                  <div class="w-[26px] h-[26px] rounded-full bg-oat dark:bg-gray-700 shrink-0 flex items-center justify-center text-[11px] font-semibold text-slate-dark dark:text-ivory">JM</div>
+                  <div class="flex-1">
+                    <div class="text-xs font-semibold text-slate-dark dark:text-ivory">Jonah M. <span class="font-normal text-gray-500 ml-1.5">2h ago</span></div>
+                    <div class="text-[13px] text-gray-700 dark:text-gray-300 mt-0.5">Should the illustration swap when the workspace already has one project? Feels odd to show the "start here" art twice.</div>
+                    <div class="text-[11.5px] text-clay mt-1 cursor-default">Reply</div>
+                  </div>
+                </div>
+                <div class="flex gap-[10px] ml-9">
+                  <div class="w-[26px] h-[26px] rounded-full bg-olive shrink-0 flex items-center justify-center text-[11px] font-semibold text-white">PS</div>
+                  <div class="flex-1">
+                    <div class="text-xs font-semibold text-slate-dark dark:text-ivory">Priya S. <span class="font-normal text-gray-500 ml-1.5">40m ago</span></div>
+                    <div class="text-[13px] text-gray-700 dark:text-gray-300 mt-0.5">Good catch — I'll gate it on <code>projects.count &gt; 0</code> and fall back to the minimal variant.</div>
+                  </div>
+                </div>
+                <div class="flex gap-[10px] items-center mt-1.5">
+                  <div class="flex-1 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-lg py-2 px-3 text-[13px] text-gray-500 bg-white dark:bg-gray-800">Add a comment…</div>
+                  <div class="bg-clay text-white rounded-lg py-2 px-[14px] text-[13px] font-semibold">Post</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-xl overflow-hidden">
+          <div class="py-3 px-[18px] [border-bottom:1.5px_solid_#D1CFC5] dark:border-gray-600 font-mono text-[11.5px] uppercase tracking-[0.06em] text-gray-500 bg-gray-150 dark:bg-gray-700">B · Sidebar unread digest</div>
+          <div class="p-[22px]">
+            <div class="flex flex-col gap-[10px]">
+              <div class="flex gap-[10px] items-start py-[10px] px-3 bg-ivory dark:bg-slate-dark [border:1.5px_solid_#D1CFC5] dark:border-gray-600 [border-left:3px_solid_#D97757] rounded-lg">
+                <div class="w-[22px] h-[22px] rounded-full bg-oat dark:bg-gray-700 shrink-0 flex items-center justify-center text-[10px] font-semibold text-slate-dark dark:text-ivory">JM</div>
+                <div class="text-[12.5px] text-gray-700 dark:text-gray-300 leading-[1.45]"><strong class="font-semibold text-slate-dark dark:text-ivory">Jonah</strong> commented <span class="text-gray-500">on BIR-1142</span> — "Should the illustration swap when…"</div>
+              </div>
+              <div class="flex gap-[10px] items-start py-[10px] px-3 bg-ivory dark:bg-slate-dark [border:1.5px_solid_#D1CFC5] dark:border-gray-600 [border-left:3px_solid_#D97757] rounded-lg">
+                <div class="w-[22px] h-[22px] rounded-full bg-oat dark:bg-gray-700 shrink-0 flex items-center justify-center text-[10px] font-semibold text-slate-dark dark:text-ivory">AK</div>
+                <div class="text-[12.5px] text-gray-700 dark:text-gray-300 leading-[1.45]"><strong class="font-semibold text-slate-dark dark:text-ivory">Aiko</strong> mentioned you <span class="text-gray-500">on BIR-1098</span> — "@priya can you confirm the copy here?"</div>
+              </div>
+              <div class="flex gap-[10px] items-start py-[10px] px-3 bg-ivory dark:bg-slate-dark [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-lg">
+                <div class="w-[22px] h-[22px] rounded-full bg-oat dark:bg-gray-700 shrink-0 flex items-center justify-center text-[10px] font-semibold text-slate-dark dark:text-ivory">RW</div>
+                <div class="text-[12.5px] text-gray-700 dark:text-gray-300 leading-[1.45]"><strong class="font-semibold text-slate-dark dark:text-ivory">Rowan</strong> replied <span class="text-gray-500">on BIR-0971</span> — "Merged, thanks for the quick turnaround."</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="mb-16">
+      <div class="flex items-baseline gap-3.5 mb-2">
+        <span class="font-mono text-xs bg-oat dark:bg-gray-700 text-slate-dark dark:text-ivory py-[3px] px-[9px] rounded-lg">04</span>
+        <h2 class="font-serif font-medium text-[26px] text-slate-dark dark:text-ivory tracking-[-0.01em]">Key code</h2>
+      </div>
+      <p class="text-[14.5px] text-gray-500 max-w-[720px] mb-7">The two pieces most likely to be done wrong: the migration (soft deletes, read cursors) and the optimistic mutation (temp-id reconciliation).</p>
+
+      <div class="grid grid-cols-2 gap-7 max-[980px]:grid-cols-1">
+
+        <div class="flex flex-col gap-[10px]">
+          <div class="font-mono text-xs text-gray-500">packages/db/migrations/0042_comments.sql</div>
+          <div class="bg-slate-dark rounded-xl py-[18px] px-5 overflow-x-auto flex-1">
+            <pre class="font-mono text-[12.5px] leading-[1.65] text-[#E8E6DE] whitespace-pre"><span class="kw">create table</span> <span class="fn">comments</span> (
+  id          uuid <span class="kw">primary key default</span> gen_random_uuid(),
+  task_id     uuid <span class="kw">not null references</span> tasks(id),
+  parent_id   uuid <span class="kw">references</span> comments(id),   <span class="cm">-- one level only,</span>
+                                                <span class="cm">-- enforced in API</span>
+  author_id   uuid <span class="kw">not null references</span> users(id),
+  body        text <span class="kw">not null</span>,
+  created_at  timestamptz <span class="kw">not null default</span> now(),
+  deleted_at  timestamptz                       <span class="cm">-- soft delete</span>
+);
+
+<span class="kw">create table</span> <span class="fn">comment_reads</span> (
+  task_id    uuid <span class="kw">not null references</span> tasks(id),
+  user_id    uuid <span class="kw">not null references</span> users(id),
+  read_up_to timestamptz <span class="kw">not null</span>,
+  <span class="kw">primary key</span> (task_id, user_id)
+);
+
+<span class="kw">create index</span> <span class="fn">comments_task_created</span>
+  <span class="kw">on</span> comments (task_id, created_at);</pre>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-[10px]">
+          <div class="font-mono text-xs text-gray-500">apps/web/hooks/useAddComment.ts</div>
+          <div class="bg-slate-dark rounded-xl py-[18px] px-5 overflow-x-auto flex-1">
+            <pre class="font-mono text-[12.5px] leading-[1.65] text-[#E8E6DE] whitespace-pre"><span class="kw">export function</span> <span class="fn">useAddComment</span>(taskId: string) {
+  <span class="kw">const</span> qc = useQueryClient();
+  <span class="kw">return</span> trpc.comments.create.<span class="fn">useMutation</span>({
+    <span class="fn">onMutate</span>: <span class="kw">async</span> (input) =&gt; {
+      <span class="kw">const</span> temp = { ...input, id: <span class="str">`temp-${nanoid()}`</span>,
+                     createdAt: <span class="kw">new</span> Date(), pending: <span class="kw">true</span> };
+      qc.<span class="fn">setQueryData</span>(key(taskId), (prev) =&gt;
+        [...(prev ?? []), temp]);
+      <span class="kw">return</span> { tempId: temp.id };
+    },
+    <span class="fn">onSuccess</span>: (row, _v, ctx) =&gt; {
+      <span class="cm">// reconcile temp id → real id so the</span>
+      <span class="cm">// realtime append doesn't duplicate it</span>
+      qc.<span class="fn">setQueryData</span>(key(taskId), (prev) =&gt;
+        prev.map((c) =&gt; c.id === ctx.tempId ? row : c));
+    },
+    <span class="fn">onError</span>: (_e, _v, ctx) =&gt; {
+      qc.<span class="fn">setQueryData</span>(key(taskId), (prev) =&gt;
+        prev.filter((c) =&gt; c.id !== ctx.tempId));
+    },
+  });
+}</pre>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="mb-16">
+      <div class="flex items-baseline gap-3.5 mb-2">
+        <span class="font-mono text-xs bg-oat dark:bg-gray-700 text-slate-dark dark:text-ivory py-[3px] px-[9px] rounded-lg">05</span>
+        <h2 class="font-serif font-medium text-[26px] text-slate-dark dark:text-ivory tracking-[-0.01em]">Risks &amp; mitigations</h2>
+      </div>
+      <div class="[border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-xl overflow-hidden bg-white dark:bg-gray-800">
+        <div class="grid grid-cols-[1.6fr_90px_1.6fr] max-[780px]:grid-cols-1">
+          <div class="py-[14px] px-[18px] text-[13.5px] bg-gray-150 dark:bg-gray-700 font-semibold text-slate-dark dark:text-ivory text-xs uppercase tracking-[0.04em]">Risk</div>
+          <div class="py-[14px] px-[18px] text-[13.5px] bg-gray-150 dark:bg-gray-700 font-semibold text-slate-dark dark:text-ivory text-xs uppercase tracking-[0.04em] [border-left:1.5px_solid_#D1CFC5] dark:border-gray-600 max-[780px]:[border-left:none] max-[780px]:[border-top:1px_dashed_#D1CFC5]">Sev</div>
+          <div class="py-[14px] px-[18px] text-[13.5px] bg-gray-150 dark:bg-gray-700 font-semibold text-slate-dark dark:text-ivory text-xs uppercase tracking-[0.04em] [border-left:1.5px_solid_#D1CFC5] dark:border-gray-600 max-[780px]:[border-left:none] max-[780px]:[border-top:1px_dashed_#D1CFC5]">Mitigation</div>
+        </div>
+        <div class="grid grid-cols-[1.6fr_90px_1.6fr] max-[780px]:grid-cols-1 [border-top:1.5px_solid_#D1CFC5] dark:border-gray-600">
+          <div class="py-[14px] px-[18px] text-[13.5px]">Realtime duplicate: socket append races with the HTTP response and the temp-id reconcile.</div>
+          <div class="py-[14px] px-[18px] text-[13.5px] [border-left:1.5px_solid_#D1CFC5] dark:border-gray-600 max-[780px]:[border-left:none] max-[780px]:[border-top:1px_dashed_#D1CFC5]"><span class="inline-block font-mono text-[11px] py-[2px] px-2 rounded-[6px] font-semibold bg-[#F3D9CC] text-[#8A3B1E]">HIGH</span></div>
+          <div class="py-[14px] px-[18px] text-[13.5px] [border-left:1.5px_solid_#D1CFC5] dark:border-gray-600 max-[780px]:[border-left:none] max-[780px]:[border-top:1px_dashed_#D1CFC5]">Dedupe on server-assigned <code>id</code> in the cache updater; socket payload carries the real id, temp rows are filtered on reconcile.</div>
+        </div>
+        <div class="grid grid-cols-[1.6fr_90px_1.6fr] max-[780px]:grid-cols-1 [border-top:1.5px_solid_#D1CFC5] dark:border-gray-600">
+          <div class="py-[14px] px-[18px] text-[13.5px]">Unread counts go stale when a user reads the thread on another device.</div>
+          <div class="py-[14px] px-[18px] text-[13.5px] [border-left:1.5px_solid_#D1CFC5] dark:border-gray-600 max-[780px]:[border-left:none] max-[780px]:[border-top:1px_dashed_#D1CFC5]"><span class="inline-block font-mono text-[11px] py-[2px] px-2 rounded-[6px] font-semibold bg-oat dark:bg-gray-700 text-slate-dark dark:text-ivory">MED</span></div>
+          <div class="py-[14px] px-[18px] text-[13.5px] [border-left:1.5px_solid_#D1CFC5] dark:border-gray-600 max-[780px]:[border-left:none] max-[780px]:[border-top:1px_dashed_#D1CFC5]">Broadcast <code>comment_reads</code> upserts on the same channel; client treats its own cursor as max(local, remote).</div>
+        </div>
+        <div class="grid grid-cols-[1.6fr_90px_1.6fr] max-[780px]:grid-cols-1 [border-top:1.5px_solid_#D1CFC5] dark:border-gray-600">
+          <div class="py-[14px] px-[18px] text-[13.5px]">Mention detection false-positives on pasted markdown (<code>@media</code>, <code>@2x</code>).</div>
+          <div class="py-[14px] px-[18px] text-[13.5px] [border-left:1.5px_solid_#D1CFC5] dark:border-gray-600 max-[780px]:[border-left:none] max-[780px]:[border-top:1px_dashed_#D1CFC5]"><span class="inline-block font-mono text-[11px] py-[2px] px-2 rounded-[6px] font-semibold bg-[#E4E9DC] text-[#4B5C39]">LOW</span></div>
+          <div class="py-[14px] px-[18px] text-[13.5px] [border-left:1.5px_solid_#D1CFC5] dark:border-gray-600 max-[780px]:[border-left:none] max-[780px]:[border-top:1px_dashed_#D1CFC5]">Resolve mentions against workspace members only, at write time, and store the resolved user ids — never re-parse on read.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-16">
+      <div class="flex items-baseline gap-3.5 mb-2">
+        <span class="font-mono text-xs bg-oat dark:bg-gray-700 text-slate-dark dark:text-ivory py-[3px] px-[9px] rounded-lg">06</span>
+        <h2 class="font-serif font-medium text-[26px] text-slate-dark dark:text-ivory tracking-[-0.01em]">Open questions</h2>
+      </div>
+      <div class="flex flex-col gap-[14px] max-w-[820px]">
+        <div class="bg-white dark:bg-gray-800 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 [border-left:4px_solid_#D97757] rounded-[10px] py-4 px-5">
+          <div class="font-semibold text-[15px] text-slate-dark dark:text-ivory mb-1">Do we allow editing, or only delete-and-repost?</div>
+          <div class="text-[13.5px] text-gray-500">Editing needs an <code>edited_at</code> column and an "edited" affordance. Delete-and-repost is simpler but loses the reply anchor. Leaning toward delete-only for v1.</div>
+          <div class="font-mono text-[11.5px] text-gray-500 mt-2">Decide with · design, before slice 2</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 [border-left:4px_solid_#D97757] rounded-[10px] py-4 px-5">
+          <div class="font-semibold text-[15px] text-slate-dark dark:text-ivory mb-1">Email digest cadence when a user has the app closed</div>
+          <div class="text-[13.5px] text-gray-500">Immediate-per-mention will be noisy. Proposal: batch on a 15-minute window, collapse to one email per task, and respect quiet hours from the existing settings table.</div>
+          <div class="font-mono text-[11.5px] text-gray-500 mt-2">Decide with · platform, before slice 4</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

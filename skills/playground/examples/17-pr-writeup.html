@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en" x-data x-bind:class="{ dark: $store.theme.dark }">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PR #312 — Move notification delivery onto a queue</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @custom-variant dark (&:where(.dark, .dark *));
+    @theme {
+      --color-ivory: #FAF9F5;
+      --color-slate-dark: #141413;
+      --color-clay: #D97757;
+      --color-oat: #E3DACC;
+      --color-olive: #788C5D;
+      --color-gray-150: #F0EEE6;
+      --color-gray-300: #D1CFC5;
+      --color-gray-500: #87867F;
+      --color-gray-700: #3D3D3A;
+    --color-gray-800: #252522;
+    --color-gray-900: #181816;
+    }
+
+    /* Code syntax highlighting */
+    .code { background: #141413; border-radius: 10px; padding: 16px 18px; overflow-x: auto; }
+    .code pre { font-family: ui-monospace,'SF Mono',Menlo,Monaco,monospace; font-size: 12.5px; line-height: 1.65; color: #E8E6DE; white-space: pre; }
+    .code .kw  { color: #D97757; }
+    .code .str { color: #788C5D; }
+    .code .cm  { color: #87867F; }
+    .code .fn  { color: #C9B98A; }
+    .code .add { background: rgba(120,140,93,.15); display: inline-block; width: 100%; }
+    .code .del { background: rgba(176,74,63,.15); display: inline-block; width: 100%; text-decoration: line-through; text-decoration-color: rgba(217,119,87,.6); }
+
+    /* Dark mode: bump diff opacity */
+    .dark .code .add { background: rgba(120,140,93,.20); }
+    .dark .code .del { background: rgba(176,74,63,.20); }
+
+    /* Badge variants */
+    .badge-new { background: #E4E9DC; color: #4B5C39; }
+    .badge-mod { background: #E3DACC; color: #141413; }
+    .badge-del { background: #F3D9CC; color: #8A3B1E; }
+    .dark .badge-new { background: rgba(120,140,93,.25); color: #a8c890; }
+    .dark .badge-mod { background: rgba(180,160,100,.20); color: #c9b98a; }
+    .dark .badge-del { background: rgba(176,74,63,.25); color: #f0a090; }
+
+    /* Details chevron state */
+    details > summary::-webkit-details-marker { display: none; }
+    details > summary { list-style: none; }
+    details > summary .chev { transform: rotate(-45deg); transition: transform .15s ease; }
+    details[open] > summary .chev { transform: rotate(45deg); }
+    details:not([open]) > summary { border-bottom: none !important; }
+
+    /* Test checkmarks */
+    .test-check-done {
+      background: #788C5D;
+      border-color: #788C5D;
+      position: relative;
+    }
+    .test-check-done::after {
+      content: '';
+      position: absolute;
+      left: 5px; top: 2px;
+      width: 5px; height: 9px;
+      border-right: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(40deg);
+    }
+
+    /* Rollout connected border */
+    .rollout-step + .rollout-step { border-left: none; }
+    @media (max-width: 720px) {
+      .rollout-step + .rollout-step { border-left: 1.5px solid #D1CFC5; margin-top: 10px; }
+    }
+    .dark .rollout-step + .rollout-step { border-left-color: #4B5563; }
+  </style>
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="bg-ivory dark:bg-slate-dark text-gray-700 dark:text-gray-300 leading-[1.55] antialiased font-sans px-4 md:px-8 pt-14 pb-28">
+  <button @click="$store.theme.toggle()"
+          class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+          :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+          x-text="$store.theme.dark ? '&#9728;' : '&#9790;'">
+  </button>
+  <div class="max-w-[1040px] mx-auto">
+
+    <!-- ===== HEADER ===== -->
+    <header class="mb-11 max-w-[820px]">
+      <div class="text-[12px] tracking-[0.08em] uppercase text-gray-500 mb-3 font-mono">Pull request · Acme</div>
+      <h1 class="font-serif font-medium text-[24px] md:text-[36px] leading-tight text-slate-dark dark:text-ivory mb-2.5 tracking-tight">#312 — Move notification delivery onto a queue</h1>
+      <div class="flex flex-wrap gap-[18px] font-mono text-[12.5px] text-gray-500 mb-4">
+        <span><strong class="text-slate-dark dark:text-ivory font-semibold">9</strong> files</span>
+        <span><span class="text-olive">+418</span> / <span class="text-clay">−190</span></span>
+        <span>branch <strong class="text-slate-dark dark:text-ivory font-semibold">notify-queue</strong> → <strong class="text-slate-dark dark:text-ivory font-semibold">main</strong></span>
+        <span>author <strong class="text-slate-dark dark:text-ivory font-semibold">@priya</strong></span>
+      </div>
+      <div class="bg-gray-150 dark:bg-gray-700 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl px-5 py-4 text-[14.5px] text-gray-700 dark:text-gray-300">
+        <span class="font-mono text-[11px] uppercase tracking-[0.06em] text-gray-500 block mb-1.5">Prompt</span>
+        Write up PR #312 for my reviewers. Explain the motivation, walk them
+        through the change file by file with the <em>why</em> for each, show
+        before/after behavior, and tell them exactly where to focus. They
+        haven't touched the notification code in six months.
+      </div>
+    </header>
+
+    <!-- ===== LAYOUT ===== -->
+    <div class="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-12 items-start">
+      <main>
+
+        <!-- TL;DR -->
+        <div class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 border-l-4 border-l-clay rounded-xl px-6 py-5 mb-12 max-w-[760px]">
+          <div class="font-mono text-[11px] uppercase tracking-[0.06em] text-gray-500 mb-2">TL;DR</div>
+          <p class="text-[15px] text-slate-dark dark:text-ivory">Notification sends were happening inline in the request path. Under load they added 200–800&nbsp;ms to mutation latency and silently dropped emails when the SMTP pool was exhausted. This PR moves delivery onto the existing <code>pg-boss</code> queue so the API returns immediately and failed sends retry with backoff.</p>
+        </div>
+
+        <!-- ===== WHY ===== -->
+        <section id="why" class="mb-14 scroll-mt-6">
+          <h2 class="font-serif font-medium text-[25px] text-slate-dark dark:text-ivory mb-3.5 tracking-tight">Why</h2>
+          <p class="text-[15.5px] max-w-[680px] mb-3">When we added @mentions in comments last quarter, every mention started triggering up to three sends (in-app, email, Slack) inside the same transaction that saved the comment. That was fine at launch. It is not fine now that a single task update can fan out to forty watchers.</p>
+
+          <div class="grid grid-cols-1 max-[720px]:grid-cols-1 min-[720px]:grid-cols-2 gap-6 mt-5 mb-1">
+            <div class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl p-[18px]">
+              <div class="font-mono text-[11px] uppercase tracking-[0.06em] text-gray-500 mb-2.5">Before</div>
+              <ul class="list-none flex flex-col gap-2 text-[13.5px]">
+                <li class="before:content-['·'] before:text-gray-500 before:mr-2">Sends run inline in the mutation handler</li>
+                <li class="before:content-['·'] before:text-gray-500 before:mr-2">SMTP timeout = 500 error for the <em>comment</em></li>
+                <li class="before:content-['·'] before:text-gray-500 before:mr-2">No retries — a dropped email is gone</li>
+                <li class="before:content-['·'] before:text-gray-500 before:mr-2">p99 on <code>comments.create</code>: <strong>1.4&nbsp;s</strong></li>
+              </ul>
+            </div>
+            <div class="bg-white dark:bg-gray-800 border-[1.5px] border-olive rounded-xl p-[18px]">
+              <div class="font-mono text-[11px] uppercase tracking-[0.06em] text-olive mb-2.5">After</div>
+              <ul class="list-none flex flex-col gap-2 text-[13.5px]">
+                <li class="before:content-['·'] before:text-olive before:mr-2">Handler enqueues one job per recipient, returns</li>
+                <li class="before:content-['·'] before:text-olive before:mr-2">Worker retries 3× with exponential backoff</li>
+                <li class="before:content-['·'] before:text-olive before:mr-2">Dead-letter table for inspection after exhaustion</li>
+                <li class="before:content-['·'] before:text-olive before:mr-2">p99 on <code>comments.create</code>: <strong>180&nbsp;ms</strong> (staging)</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== FILE TOUR ===== -->
+        <section id="tour" class="mb-14 scroll-mt-6">
+          <h2 class="font-serif font-medium text-[25px] text-slate-dark dark:text-ivory mb-3.5 tracking-tight">File-by-file</h2>
+          <p class="text-[15.5px] max-w-[680px] mb-5">Ordered for reading, not alphabetically. Start at the worker — it's the new thing — then the enqueue call site, then the plumbing.</p>
+
+          <div class="flex flex-col gap-[22px]">
+
+            <details class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden" open>
+              <summary class="px-5 py-3.5 cursor-pointer flex items-center gap-3 bg-gray-150 dark:bg-gray-700 border-b-[1.5px] border-gray-300 dark:border-gray-600">
+                <span class="chev w-2 h-2 border-r-2 border-b-2 border-gray-500 flex-shrink-0"></span>
+                <span class="font-mono text-[13px] text-slate-dark dark:text-ivory flex-1">packages/notify/src/worker.ts</span>
+                <span class="badge-new font-mono text-[10.5px] uppercase tracking-[0.05em] px-2 py-0.5 rounded-md font-semibold">new</span>
+                <span class="font-mono text-[12px]"><span class="text-olive">+126</span></span>
+              </summary>
+              <div class="px-5 pt-4 pb-5">
+                <p class="text-[14.5px] mb-3.5 max-w-[680px]"><strong class="text-slate-dark dark:text-ivory">The heart of the PR.</strong> A <code>pg-boss</code> subscriber that pulls <code>notify.deliver</code> jobs, resolves the user's channel preferences, and calls the right adapter. Retries are configured per-channel — email gets three attempts, Slack gets one because its API is already idempotent on our side.</p>
+                <div class="code"><pre>boss.<span class="fn">work</span>(<span class="str">'notify.deliver'</span>, { batchSize: 20 }, <span class="kw">async</span> (jobs) =&gt; {
+  <span class="kw">for</span> (<span class="kw">const</span> job <span class="kw">of</span> jobs) {
+    <span class="kw">const</span> { userId, event, channel } = job.data;
+    <span class="kw">const</span> prefs = <span class="kw">await</span> <span class="fn">getPrefs</span>(userId);
+    <span class="kw">if</span> (!prefs[channel]) <span class="kw">return</span>;          <span class="cm">// user muted this channel</span>
+
+    <span class="kw">try</span> {
+      <span class="kw">await</span> adapters[channel].<span class="fn">send</span>(userId, event);
+    } <span class="kw">catch</span> (err) {
+      <span class="kw">if</span> (job.retryCount &gt;= MAX_RETRY[channel]) {
+        <span class="kw">await</span> <span class="fn">deadLetter</span>(job, err);         <span class="cm">// don't throw — ack &amp; park</span>
+        <span class="kw">return</span>;
+      }
+      <span class="kw">throw</span> err;                            <span class="cm">// pg-boss reschedules</span>
+    }
+  }
+});</pre></div>
+              </div>
+            </details>
+
+            <details class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden" open>
+              <summary class="px-5 py-3.5 cursor-pointer flex items-center gap-3 bg-gray-150 dark:bg-gray-700 border-b-[1.5px] border-gray-300 dark:border-gray-600">
+                <span class="chev w-2 h-2 border-r-2 border-b-2 border-gray-500 flex-shrink-0"></span>
+                <span class="font-mono text-[13px] text-slate-dark dark:text-ivory flex-1">packages/api/src/routers/comments.ts</span>
+                <span class="badge-mod font-mono text-[10.5px] uppercase tracking-[0.05em] px-2 py-0.5 rounded-md font-semibold">mod</span>
+                <span class="font-mono text-[12px]"><span class="text-olive">+14</span> <span class="text-clay">−62</span></span>
+              </summary>
+              <div class="px-5 pt-4 pb-5">
+                <p class="text-[14.5px] mb-3.5 max-w-[680px]"><strong class="text-slate-dark dark:text-ivory">Where the win shows up.</strong> The mutation used to call <code>sendEmail</code>, <code>sendSlack</code>, and <code>createInApp</code> directly. Now it inserts the comment, computes recipients, and enqueues. The try/catch soup is gone.</p>
+                <div class="code"><pre>  <span class="kw">const</span> comment = <span class="kw">await</span> db.comments.<span class="fn">insert</span>(input);
+  <span class="kw">const</span> recipients = <span class="kw">await</span> <span class="fn">resolveWatchers</span>(input.taskId, input.mentions);
+
+<span class="del">  <span class="kw">for</span> (<span class="kw">const</span> r <span class="kw">of</span> recipients) {</span>
+<span class="del">    <span class="kw">await</span> <span class="fn">sendEmail</span>(r, comment);       <span class="cm">// blocked the response</span></span>
+<span class="del">    <span class="kw">await</span> <span class="fn">sendSlack</span>(r, comment);</span>
+<span class="del">  }</span>
+<span class="add">  <span class="kw">await</span> boss.<span class="fn">insert</span>(recipients.flatMap((r) =&gt;</span>
+<span class="add">    CHANNELS.map((ch) =&gt; ({</span>
+<span class="add">      name: <span class="str">'notify.deliver'</span>,</span>
+<span class="add">      data: { userId: r.id, channel: ch, event: toEvent(comment) },</span>
+<span class="add">      singletonKey: <span class="str">`${comment.id}:${r.id}:${ch}`</span>,  <span class="cm">// idempotent</span></span>
+<span class="add">    }))));</span>
+  <span class="kw">return</span> comment;</pre></div>
+              </div>
+            </details>
+
+            <details class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden">
+              <summary class="px-5 py-3.5 cursor-pointer flex items-center gap-3 bg-gray-150 dark:bg-gray-700 border-b-[1.5px] border-gray-300 dark:border-gray-600">
+                <span class="chev w-2 h-2 border-r-2 border-b-2 border-gray-500 flex-shrink-0"></span>
+                <span class="font-mono text-[13px] text-slate-dark dark:text-ivory flex-1">packages/db/migrations/0051_dead_letter.sql</span>
+                <span class="badge-new font-mono text-[10.5px] uppercase tracking-[0.05em] px-2 py-0.5 rounded-md font-semibold">new</span>
+                <span class="font-mono text-[12px]"><span class="text-olive">+22</span></span>
+              </summary>
+              <div class="px-5 pt-4 pb-5">
+                <p class="text-[14.5px] max-w-[680px]">Table for jobs that exhaust their retries. Deliberately <em>not</em> auto-pruned — we want to look at these weekly until we trust the new path. Has the full job payload and the last error string.</p>
+              </div>
+            </details>
+
+            <details class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden">
+              <summary class="px-5 py-3.5 cursor-pointer flex items-center gap-3 bg-gray-150 dark:bg-gray-700 border-b-[1.5px] border-gray-300 dark:border-gray-600">
+                <span class="chev w-2 h-2 border-r-2 border-b-2 border-gray-500 flex-shrink-0"></span>
+                <span class="font-mono text-[13px] text-slate-dark dark:text-ivory flex-1">packages/notify/src/adapters/{email,slack,inapp}.ts</span>
+                <span class="badge-mod font-mono text-[10.5px] uppercase tracking-[0.05em] px-2 py-0.5 rounded-md font-semibold">mod</span>
+                <span class="font-mono text-[12px]"><span class="text-olive">+88</span> <span class="text-clay">−74</span></span>
+              </summary>
+              <div class="px-5 pt-4 pb-5">
+                <p class="text-[14.5px] max-w-[680px]">Mostly moves. Each adapter now implements a shared <code>Adapter</code> interface and throws a typed <code>RetryableError</code> or <code>PermanentError</code> so the worker knows whether to retry. The email adapter also drops its internal retry loop — the queue owns retries now, double-retrying was how we got duplicate emails in April.</p>
+              </div>
+            </details>
+
+            <details class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden">
+              <summary class="px-5 py-3.5 cursor-pointer flex items-center gap-3 bg-gray-150 dark:bg-gray-700 border-b-[1.5px] border-gray-300 dark:border-gray-600">
+                <span class="chev w-2 h-2 border-r-2 border-b-2 border-gray-500 flex-shrink-0"></span>
+                <span class="font-mono text-[13px] text-slate-dark dark:text-ivory flex-1">apps/worker/src/index.ts, infra/fly.toml</span>
+                <span class="badge-mod font-mono text-[10.5px] uppercase tracking-[0.05em] px-2 py-0.5 rounded-md font-semibold">mod</span>
+                <span class="font-mono text-[12px]"><span class="text-olive">+31</span> <span class="text-clay">−4</span></span>
+              </summary>
+              <div class="px-5 pt-4 pb-5">
+                <p class="text-[14.5px] max-w-[680px]">Registers the new subscriber in the existing worker process and bumps its concurrency from 5 → 20. No new deploy unit.</p>
+              </div>
+            </details>
+
+            <details class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden">
+              <summary class="px-5 py-3.5 cursor-pointer flex items-center gap-3 bg-gray-150 dark:bg-gray-700 border-b-[1.5px] border-gray-300 dark:border-gray-600">
+                <span class="chev w-2 h-2 border-r-2 border-b-2 border-gray-500 flex-shrink-0"></span>
+                <span class="font-mono text-[13px] text-slate-dark dark:text-ivory flex-1">packages/notify/src/__tests__/worker.test.ts</span>
+                <span class="badge-new font-mono text-[10.5px] uppercase tracking-[0.05em] px-2 py-0.5 rounded-md font-semibold">new</span>
+                <span class="font-mono text-[12px]"><span class="text-olive">+137</span></span>
+              </summary>
+              <div class="px-5 pt-4 pb-5">
+                <p class="text-[14.5px] max-w-[680px]">Covers the retry boundary, the dead-letter path, channel muting, and the singleton key dedupe. Uses a real pg-boss against the test database — we got burned last quarter when mocked queue tests passed but prod ordering broke.</p>
+              </div>
+            </details>
+
+          </div>
+        </section>
+
+        <!-- ===== FOCUS ===== -->
+        <section id="focus" class="mb-14 scroll-mt-6">
+          <h2 class="font-serif font-medium text-[25px] text-slate-dark dark:text-ivory mb-3.5 tracking-tight">Where to focus your review</h2>
+          <div class="flex flex-col gap-3.5 max-w-[760px]">
+
+            <div class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-[10px] px-5 py-4 flex gap-4">
+              <div class="font-mono text-[13px] font-semibold text-white bg-clay w-[26px] h-[26px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">1</div>
+              <div>
+                <div class="font-semibold text-slate-dark dark:text-ivory text-[15px] mb-0.5">The retry / dead-letter boundary</div>
+                <div class="text-[13.5px] text-gray-500"><code>worker.ts:31–44</code>. I catch, check <code>retryCount</code>, and either park or rethrow. If this logic is wrong we either retry forever or drop messages — the two failure modes this PR exists to fix.</div>
+              </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-[10px] px-5 py-4 flex gap-4">
+              <div class="font-mono text-[13px] font-semibold text-white bg-clay w-[26px] h-[26px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">2</div>
+              <div>
+                <div class="font-semibold text-slate-dark dark:text-ivory text-[15px] mb-0.5">The singleton key</div>
+                <div class="text-[13.5px] text-gray-500"><code>comments.ts:28</code>. <code>${commentId}:${userId}:${channel}</code> should make re-enqueues idempotent if the API handler retries. Sanity-check that this can't collide across tasks.</div>
+              </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-[10px] px-5 py-4 flex gap-4">
+              <div class="font-mono text-[13px] font-semibold text-white bg-clay w-[26px] h-[26px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">3</div>
+              <div>
+                <div class="font-semibold text-slate-dark dark:text-ivory text-[15px] mb-0.5">What I deliberately did not do</div>
+                <div class="text-[13.5px] text-gray-500">No per-user digest batching, no delivery receipts, no priority lanes. All of those layer on top of this cleanly; bundling them would make this unreviewable.</div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ===== TEST PLAN ===== -->
+        <section id="tests" class="mb-14 scroll-mt-6">
+          <h2 class="font-serif font-medium text-[25px] text-slate-dark dark:text-ivory mb-3.5 tracking-tight">Test plan</h2>
+          <div class="flex flex-col gap-2.5 max-w-[760px]">
+
+            <div class="flex items-start gap-3 bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-[10px] px-4 py-3 text-[14px]">
+              <span class="w-[18px] h-[18px] rounded-[5px] flex-shrink-0 mt-0.5 test-check-done"></span>
+              <div><div class="text-slate-dark dark:text-ivory">Unit: retry → dead-letter path, channel mute, singleton dedupe</div><div class="text-gray-500 text-[13px] mt-0.5">packages/notify — 14 cases, real pg-boss on test db</div></div>
+            </div>
+
+            <div class="flex items-start gap-3 bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-[10px] px-4 py-3 text-[14px]">
+              <span class="w-[18px] h-[18px] rounded-[5px] flex-shrink-0 mt-0.5 test-check-done"></span>
+              <div><div class="text-slate-dark dark:text-ivory">Integration: create comment with 3 watchers, assert 9 jobs enqueued and drained</div></div>
+            </div>
+
+            <div class="flex items-start gap-3 bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-[10px] px-4 py-3 text-[14px]">
+              <span class="w-[18px] h-[18px] rounded-[5px] flex-shrink-0 mt-0.5 test-check-done"></span>
+              <div><div class="text-slate-dark dark:text-ivory">Staging load: 500 rps on comments.create for 10 min, p99 = 180 ms</div><div class="text-gray-500 text-[13px] mt-0.5">was 1.4 s before — dashboard linked in the PR description</div></div>
+            </div>
+
+            <div class="flex items-start gap-3 bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 rounded-[10px] px-4 py-3 text-[14px]">
+              <span class="w-[18px] h-[18px] rounded-[5px] flex-shrink-0 mt-0.5 border-[1.5px] border-gray-300 dark:border-gray-600"></span>
+              <div><div class="text-slate-dark dark:text-ivory">Manual: kill SMTP mid-burst, confirm jobs land in dead-letter and nothing 500s</div><div class="text-gray-500 text-[13px] mt-0.5">will do during the 10% ramp</div></div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ===== ROLLOUT ===== -->
+        <section id="rollout" class="mb-14 scroll-mt-6">
+          <h2 class="font-serif font-medium text-[25px] text-slate-dark dark:text-ivory mb-3.5 tracking-tight">Rollout</h2>
+          <p class="text-[15.5px] max-w-[680px] mb-5">Behind <code>notify_queue_v2</code>. The old inline path stays in the codebase, dead but dormant, for one release in case we need to flip back.</p>
+          <div class="flex max-[720px]:flex-col max-w-[780px]">
+            <div class="rollout-step flex-1 bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 p-4 rounded-l-xl max-[720px]:rounded-xl">
+              <div class="font-mono text-[11px] uppercase tracking-[0.05em] text-gray-500 mb-2">Day 0</div>
+              <div class="font-mono text-[22px] font-semibold text-clay mb-1.5">internal</div>
+              <div class="text-[13px] text-gray-500">Acme team only. Watch dead-letter table + worker error rate.</div>
+            </div>
+            <div class="rollout-step flex-1 bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 p-4 max-[720px]:rounded-xl">
+              <div class="font-mono text-[11px] uppercase tracking-[0.05em] text-gray-500 mb-2">Day 2</div>
+              <div class="font-mono text-[22px] font-semibold text-clay mb-1.5">10%</div>
+              <div class="text-[13px] text-gray-500">Random sample. Alert if dead-letter rate &gt; 0.5% of sends.</div>
+            </div>
+            <div class="rollout-step flex-1 bg-white dark:bg-gray-800 border-[1.5px] border-gray-300 dark:border-gray-600 p-4 rounded-r-xl max-[720px]:rounded-xl">
+              <div class="font-mono text-[11px] uppercase tracking-[0.05em] text-gray-500 mb-2">Day 4</div>
+              <div class="font-mono text-[22px] font-semibold text-clay mb-1.5">100%</div>
+              <div class="text-[13px] text-gray-500">Ramp fully, delete the inline path in a follow-up PR next week.</div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- ===== TOC ===== -->
+      <nav class="hidden lg:block sticky top-8 border-l-[1.5px] border-gray-300 dark:border-gray-600 pl-4 text-[13px]">
+        <div class="font-mono text-[11px] uppercase tracking-[0.06em] text-gray-500 mb-2.5">In this PR</div>
+        <a href="#why" class="block text-gray-700 dark:text-gray-300 no-underline py-1 hover:text-clay">Why</a>
+        <a href="#tour" class="block text-gray-700 dark:text-gray-300 no-underline py-1 hover:text-clay">File-by-file</a>
+        <a href="#tour" class="block pl-3 text-gray-500 no-underline py-1 text-[12.5px] hover:text-clay">worker.ts</a>
+        <a href="#tour" class="block pl-3 text-gray-500 no-underline py-1 text-[12.5px] hover:text-clay">comments.ts</a>
+        <a href="#tour" class="block pl-3 text-gray-500 no-underline py-1 text-[12.5px] hover:text-clay">adapters</a>
+        <a href="#focus" class="block text-gray-700 dark:text-gray-300 no-underline py-1 hover:text-clay">Where to focus</a>
+        <a href="#tests" class="block text-gray-700 dark:text-gray-300 no-underline py-1 hover:text-clay">Test plan</a>
+        <a href="#rollout" class="block text-gray-700 dark:text-gray-300 no-underline py-1 hover:text-clay">Rollout</a>
+      </nav>
+    </div>
+
+  </div>
+</body>
+</html>

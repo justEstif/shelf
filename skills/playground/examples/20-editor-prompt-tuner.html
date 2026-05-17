@@ -1,0 +1,269 @@
+<!doctype html>
+<html x-data lang="en" x-bind:class="{ dark: $store.theme.dark }">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acme — Support reply prompt tuner</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+  @theme {
+    --color-ivory: #FAF9F5;
+    --color-slate-dark: #141413;
+    --color-clay: #D97757;
+    --color-clay-d: #B85C3E;
+    --color-oat: #E3DACC;
+    --color-olive: #788C5D;
+    --color-gray-50: #F0EEE6;
+    --color-gray-200: #D1CFC5;
+    --color-gray-500: #87867F;
+    --color-gray-800: #3D3D3A;
+  }
+  [x-cloak] { display: none; }
+
+  /* Rendered preview highlight spans */
+  .filled  { background: #F0EEE6; border-radius: 3px; padding: 0 2px; box-shadow: inset 0 0 0 1px #D1CFC5; }
+  .missing { background: rgba(217,119,87,0.12); color: #B85C3E; border-radius: 3px; padding: 0 2px; font-weight: 600; }
+  :where(.dark, .dark *) .filled  { background: #374151; box-shadow: inset 0 0 0 1px #4b5563; color: #e5e7eb; }
+  :where(.dark, .dark *) .missing { background: rgba(217,119,87,0.20); color: #fca5a5; }
+</style>
+<script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="bg-ivory text-slate-dark font-sans text-sm leading-relaxed m-0 dark:bg-slate-dark dark:text-ivory">
+<button @click="$store.theme.toggle()"
+        class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+        :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+        x-text="$store.theme.dark ? '☀' : '☾'">
+</button>
+<div class="max-w-[1180px] mx-auto px-8 pt-12 pb-16" x-data="promptTuner()" x-cloak>
+
+  <header class="mb-[22px]">
+    <div class="font-mono text-[11px] tracking-[0.08em] uppercase text-gray-500">Acme / editor / prompt-tuner</div>
+    <h1 class="font-serif font-medium text-[30px] tracking-tight mt-1.5 mb-1">Support reply draft prompt</h1>
+    <p class="text-gray-500 max-w-[640px]">Edit the system prompt on the left and watch three sample tickets re-render the filled template on the right, live as you type. When it reads well across all three moods, copy the template out.</p>
+  </header>
+
+  <!-- Toolbar -->
+  <div class="sticky top-0 z-10 flex items-center gap-2.5 bg-ivory dark:bg-slate-dark pt-2.5 pb-3.5 mb-1.5 border-b border-gray-200 dark:border-gray-700">
+    <button
+      @click="copyPrompt()"
+      :class="copied ? 'bg-olive border-olive' : 'bg-slate-dark border-slate-dark hover:bg-gray-800'"
+      class="font-mono text-[12px] cursor-pointer text-ivory border-[1.5px] rounded-full px-4 py-[9px] transition-colors"
+      x-text="copied ? 'Copied ✓' : 'Copy prompt'"></button>
+    <button
+      @click="reset()"
+      class="font-mono text-[12px] cursor-pointer bg-transparent text-gray-800 border-[1.5px] border-gray-200 rounded-full px-[15px] py-2 hover:border-gray-500 hover:text-slate-dark transition-colors dark:text-gray-300 dark:border-gray-600 dark:hover:border-gray-400 dark:hover:text-gray-100">Reset</button>
+    <div class="flex-1"></div>
+    <div class="font-mono text-[11px] text-gray-500 tracking-[0.02em]">slots use <strong>{{double_brace}}</strong> syntax</div>
+  </div>
+
+  <!-- Two-column layout -->
+  <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-6 items-start mt-[18px]">
+
+    <!-- Left: editor -->
+    <section class="bg-white border-[1.5px] border-gray-200 rounded-xl overflow-hidden dark:bg-gray-800 dark:border-gray-600">
+      <!-- Editor toolbar -->
+      <div class="flex items-center gap-2.5 px-4 py-[11px] border-b-[1.5px] border-gray-200 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+        <span class="font-mono text-[11px] tracking-[0.1em] text-gray-500 uppercase">Template</span>
+        <div class="flex-1"></div>
+        <span class="font-mono text-[11px] text-gray-800 bg-white border-[1.5px] border-gray-200 rounded-full px-2.5 py-0.5 whitespace-nowrap tabular-nums dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300"
+          x-text="chars + ' chars · ~' + tokens + ' tokens'"></span>
+      </div>
+
+      <!-- Textarea editor -->
+      <textarea
+        x-model="template"
+        class="font-mono text-[13px] leading-[1.7] px-[18px] py-[18px] min-h-[360px] w-full bg-white text-slate-dark outline-none resize-none border-none block whitespace-pre-wrap break-words caret-clay dark:bg-gray-800 dark:text-gray-200"
+        spellcheck="false"
+        autocapitalize="off"
+        autocorrect="off"></textarea>
+
+      <!-- Legend -->
+      <div class="border-t-[1.5px] border-gray-200 px-4 pt-3 pb-3.5 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+        <div class="font-mono text-[10px] tracking-[0.1em] uppercase text-gray-500 mb-2">Available slots</div>
+        <div class="flex flex-wrap gap-1.5">
+          <template x-for="slot in knownSlots" :key="slot">
+            <span
+              class="font-mono text-[11px] bg-oat text-clay-d rounded px-[7px] py-0.5 font-semibold"
+              x-text="'{{' + slot + '}}'"></span>
+          </template>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: preview -->
+    <section class="bg-white border-[1.5px] border-gray-200 rounded-xl overflow-hidden p-4 flex flex-col gap-3.5 dark:bg-gray-800 dark:border-gray-600">
+      <div class="font-mono text-[11px] tracking-[0.1em] uppercase text-gray-500 px-0.5 pb-0.5">Live preview · 3 sample tickets</div>
+
+      <template x-for="sample in samples" :key="sample.label">
+        <div class="border-[1.5px] border-gray-200 rounded-[10px] overflow-hidden dark:border-gray-600">
+          <!-- Sample header -->
+          <div class="flex items-center gap-[9px] px-[13px] py-[9px] border-b-[1.5px] border-gray-200 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+            <span class="font-mono text-[10px] tracking-[0.08em] text-gray-500" x-text="sample.label"></span>
+            <span class="font-serif text-[14px] font-medium tracking-[-0.005em] dark:text-gray-200" x-text="sample.data.customer_name"></span>
+            <div class="flex-1"></div>
+            <span
+              class="font-mono text-[10px] tracking-[0.05em] uppercase rounded-full px-2 py-0.5 border-[1.5px]"
+              :class="{
+                'bg-white border-gray-200 text-gray-800 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300': sample.planClass === 'free',
+                'bg-oat border-oat text-clay-d': sample.planClass === 'team',
+                'bg-olive border-olive text-ivory': sample.planClass === 'studio'
+              }"
+              x-text="sample.data.plan_tier"></span>
+          </div>
+          <!-- Rendered preview -->
+          <div
+            class="font-mono text-[12.5px] leading-[1.6] text-gray-800 whitespace-pre-wrap break-words px-[13px] py-3 pb-3.5 dark:text-gray-300 dark:bg-gray-800"
+            x-html="filledHtml(sample.data)"></div>
+        </div>
+      </template>
+    </section>
+  </div>
+
+  <footer class="mt-9 font-mono text-[11px] text-gray-500 tracking-[0.02em]">Highlighted slots fill from each sample's ticket fields. Anything shown in clay isn't a known field and will pass through unfilled.</footer>
+
+</div>
+
+<script>
+(function () {
+"use strict";
+
+const DEFAULT_TEMPLATE =
+'You are a support agent for Acme, a project workspace for small teams.\n' +
+'\n' +
+'A customer named {{customer_name}} on the {{plan_tier}} plan wrote in about:\n' +
+'"{{ticket_subject}}"\n' +
+'\n' +
+'Their message:\n' +
+'{{ticket_body}}\n' +
+'\n' +
+'Write a reply that is {{tone}}, no more than 120 words, and ends with a single concrete next step.\n' +
+'Never promise a refund without escalating. Sign off as "The Acme team."';
+
+const SAMPLES = [
+  {
+    label: 'SAMPLE 1',
+    planClass: 'free',
+    data: {
+      customer_name:  'Priya N.',
+      plan_tier:      'Free',
+      ticket_subject: 'Where did my board go?',
+      ticket_body:    'Hi — I made a board yesterday called "Spring launch" with my coworker and today I can\'t find it anywhere. I\'m new to Acme and I\'m not sure if I deleted it by accident or if I\'m just looking in the wrong place. Can you help?',
+      tone:           'warm and patient'
+    }
+  },
+  {
+    label: 'SAMPLE 2',
+    planClass: 'team',
+    data: {
+      customer_name:  'Marcus D.',
+      plan_tier:      'Team',
+      ticket_subject: 'Sync keeps dropping comments',
+      ticket_body:    'This is the third time this week. I leave comments on cards from my laptop, switch to my phone on the train, and they\'re gone. My team thinks I\'m ignoring them. We pay for 14 seats and this is genuinely making us look bad to a client.',
+      tone:           'direct and apologetic'
+    }
+  },
+  {
+    label: 'SAMPLE 3',
+    planClass: 'studio',
+    data: {
+      customer_name:  'Lena K.',
+      plan_tier:      'Studio',
+      ticket_subject: 'Update billing entity on next invoice',
+      ticket_body:    'Hey folks! We just spun up a new holding company (ACME Corp Oy) and finance would love the May invoice to use that name + our new VAT ID, FI00000000. No rush at all, just want it sorted before the cycle runs. Thanks a million.',
+      tone:           'brisk and friendly'
+    }
+  }
+];
+
+const KNOWN_SLOTS = ['customer_name', 'plan_tier', 'ticket_subject', 'ticket_body', 'tone'];
+const SLOT_RE = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Build filled HTML for a sample: replaces {{slot}} with highlighted spans.
+// The input (template) comes from the user but its content is HTML-escaped
+// before insertion. The span classes are hardcoded. No raw user HTML reaches
+// the DOM — escHtml() is applied to all text segments and data values.
+function buildFilledHtml(template, data) {
+  let html = '';
+  let last = 0;
+  SLOT_RE.lastIndex = 0;
+  let m;
+  while ((m = SLOT_RE.exec(template)) !== null) {
+    html += escHtml(template.slice(last, m.index));
+    const name = m[1];
+    if (Object.prototype.hasOwnProperty.call(data, name)) {
+      html += '<span class="filled">' + escHtml(String(data[name])) + '</span>';
+    } else {
+      html += '<span class="missing">' + escHtml(m[0]) + '</span>';
+    }
+    last = m.index + m[0].length;
+  }
+  html += escHtml(template.slice(last));
+  return html;
+}
+
+window.promptTuner = function () {
+  return {
+    template: DEFAULT_TEMPLATE,
+    samples: SAMPLES,
+    knownSlots: KNOWN_SLOTS,
+    copied: false,
+    _copyTimer: null,
+
+    get chars() { return this.template.length; },
+    get tokens() { return Math.round(this.template.length / 4.2); },
+
+    filledHtml(data) {
+      return buildFilledHtml(this.template, data);
+    },
+
+    copyPrompt() {
+      const text = this.template;
+      const flash = () => {
+        this.copied = true;
+        clearTimeout(this._copyTimer);
+        this._copyTimer = setTimeout(() => { this.copied = false; }, 1200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(flash, flash);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;left:-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (_) {}
+        document.body.removeChild(ta);
+        flash();
+      }
+    },
+
+    reset() {
+      this.template = DEFAULT_TEMPLATE;
+    }
+  };
+};
+})();
+</script>
+</body>
+</html>

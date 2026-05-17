@@ -1,0 +1,311 @@
+<!doctype html>
+<html x-data lang="en" x-bind:class="{ dark: $store.theme.dark }">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deploy pipeline — annotated flowchart</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+
+  @theme {
+    --color-ivory:      #FAF9F5;
+    --color-slate-dark: #141413;
+    --color-clay:       #D97757;
+    --color-oat:        #E3DACC;
+    --color-olive:      #788C5D;
+    --color-rust:       #B04A3F;
+    --color-gray-150:   #F0EEE6;
+    --color-gray-300:   #D1CFC5;
+    --color-gray-500:   #87867F;
+    --color-gray-700:   #3D3D3A;
+    --color-gray-800: #252522;
+    --color-gray-900: #181816;
+    --font-serif: ui-serif, Georgia, "Times New Roman", serif;
+    --font-mono:  ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  [x-cloak] { display: none; }
+
+  /* SVG-specific selectors */
+  .flow text { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; fill: #141413; pointer-events: none; }
+  .flow .sub  { font-size: 10px; fill: #87867F; }
+  .flow .lbl  { font-size: 10px; fill: #87867F; }
+
+  .node rect       { fill: #fff; stroke: #D1CFC5; stroke-width: 1.5; rx: 8; }
+  .node.term rect  { fill: #F0EEE6; rx: 22; }
+  .node.gate path  { fill: #fff; stroke: #D1CFC5; stroke-width: 1.5; }
+  .node.ok rect    { fill: rgba(120,140,93,0.12); stroke: #788C5D; }
+  .node.bad rect   { fill: rgba(176,74,63,0.10); stroke: #B04A3F; }
+
+  .node       { cursor: pointer; transition: transform 120ms ease; }
+  .node:hover { transform: translateY(-1px); }
+  .node.active rect,
+  .node.active path { stroke: #D97757; stroke-width: 2; }
+
+  .edge     { stroke: #87867F; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+  .edge.no  { stroke: #B04A3F; stroke-dasharray: 4 4; marker-end: url(#arrow-rust); }
+  .edge.yes { stroke: #788C5D; marker-end: url(#arrow-olive); }
+
+  /* x-html injected code elements */
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+
+  /* Dark mode SVG overrides */
+  .dark .flow text { fill: #e5e7eb; }
+  .dark .flow .sub  { fill: #6b7280; }
+  .dark .flow .lbl  { fill: #6b7280; }
+  .dark .node rect       { fill: #1f2937; stroke: #4b5563; }
+  .dark .node.term rect  { fill: #374151; }
+  .dark .node.gate path  { fill: #1f2937; stroke: #4b5563; }
+  .dark .node.ok rect    { fill: rgba(120,140,93,0.20); stroke: #788C5D; }
+  .dark .node.bad rect   { fill: rgba(176,74,63,0.20); stroke: #B04A3F; }
+  .dark .node.active rect,
+  .dark .node.active path { stroke: #D97757; stroke-width: 2; }
+  .dark #arrow path       { fill: #6b7280; }
+  .dark #arrow-rust path  { fill: #B04A3F; }
+  .dark #arrow-olive path { fill: #788C5D; }
+</style>
+<script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="bg-ivory dark:bg-slate-dark text-slate-dark dark:text-ivory font-sans antialiased py-14 px-6 pb-24">
+<button @click="$store.theme.toggle()"
+        class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+        :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+        x-text="$store.theme.dark ? '☀' : '☾'">
+</button>
+<div class="max-w-[980px] mx-auto">
+
+  <header class="mb-10">
+    <div class="font-mono text-[11px] tracking-[0.08em] uppercase text-gray-500 dark:text-gray-400 mb-2.5">Illustrations &amp; Diagrams · Flowchart</div>
+    <h1 class="font-serif font-medium text-[34px] tracking-[-0.01em] mb-3">What happens when you <code>git push</code></h1>
+    <p class="text-[14.5px] leading-relaxed text-gray-700 dark:text-gray-300 max-w-[640px]">
+      The deploy pipeline for <code>acme/web</code>, drawn from <code>.github/workflows/</code> and the
+      Argo manifests. Click any step to see what runs, how long it usually takes, and where it can short-circuit.
+    </p>
+  </header>
+
+  <div class="grid grid-cols-[minmax(0,1fr)_300px] gap-8 items-start max-[920px]:grid-cols-1"
+       x-data="flowchart()">
+
+    <div>
+      <div class="[border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-[14px] bg-white dark:bg-gray-800 p-7 overflow-x-auto">
+        <svg class="block w-full h-auto flow" viewBox="0 0 620 920">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#87867F"/>
+            </marker>
+            <marker id="arrow-rust" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#B04A3F"/>
+            </marker>
+            <marker id="arrow-olive" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#788C5D"/>
+            </marker>
+          </defs>
+
+          <!-- edges -->
+          <path class="edge" d="M310,56 L310,92"/>
+          <path class="edge" d="M310,140 L310,176"/>
+          <path class="edge" d="M310,224 L310,262"/>
+          <path class="edge yes" d="M310,326 L310,368"/>
+          <text class="lbl" x="320" y="350">pass</text>
+          <path class="edge no" d="M268,294 C190,294 150,294 150,212 L150,212"/>
+          <text class="lbl" x="138" y="260" fill="#B04A3F">fail → status</text>
+          <path class="edge" d="M310,416 L310,452"/>
+          <path class="edge" d="M310,500 L310,538"/>
+          <path class="edge yes" d="M310,602 L310,644"/>
+          <text class="lbl" x="320" y="626">healthy</text>
+          <path class="edge no" d="M352,570 C470,570 470,690 392,720"/>
+          <text class="lbl" x="448" y="636" fill="#B04A3F">canary fails</text>
+          <path class="edge" d="M310,692 L310,730"/>
+          <path class="edge" d="M310,778 L310,816"/>
+
+          <!-- nodes -->
+          <g class="node term" :class="{active: active==='push'}" @click="select('push')">
+            <rect x="230" y="12" width="160" height="44"/>
+            <text x="310" y="38" text-anchor="middle">git push main</text>
+          </g>
+
+          <g class="node" :class="{active: active==='ci'}" @click="select('ci')">
+            <rect x="210" y="92" width="200" height="48"/>
+            <text x="310" y="112" text-anchor="middle">CI · lint + typecheck</text>
+            <text class="sub" x="310" y="128" text-anchor="middle">~2 min · ci.yml</text>
+          </g>
+
+          <g class="node" :class="{active: active==='test'}" @click="select('test')">
+            <rect x="210" y="176" width="200" height="48"/>
+            <text x="310" y="196" text-anchor="middle">Unit + integration tests</text>
+            <text class="sub" x="310" y="212" text-anchor="middle">~6 min · 3 shards</text>
+          </g>
+
+          <g class="node gate" :class="{active: active==='gate-tests'}" @click="select('gate-tests')">
+            <path d="M310,262 L352,294 L310,326 L268,294 Z"/>
+            <text x="310" y="298" text-anchor="middle">pass?</text>
+          </g>
+
+          <g class="node bad" :class="{active: active==='status'}" @click="select('status')">
+            <rect x="60" y="176" width="180" height="48"/>
+            <text x="150" y="196" text-anchor="middle">Post failure status</text>
+            <text class="sub" x="150" y="212" text-anchor="middle">slack #deploys</text>
+          </g>
+
+          <g class="node" :class="{active: active==='build'}" @click="select('build')">
+            <rect x="210" y="368" width="200" height="48"/>
+            <text x="310" y="388" text-anchor="middle">Build + push image</text>
+            <text class="sub" x="310" y="404" text-anchor="middle">ghcr.io/acme/web</text>
+          </g>
+
+          <g class="node" :class="{active: active==='canary'}" @click="select('canary')">
+            <rect x="210" y="452" width="200" height="48"/>
+            <text x="310" y="472" text-anchor="middle">Argo canary 5%</text>
+            <text class="sub" x="310" y="488" text-anchor="middle">10 min soak</text>
+          </g>
+
+          <g class="node gate" :class="{active: active==='gate-canary'}" @click="select('gate-canary')">
+            <path d="M310,538 L352,570 L310,602 L268,570 Z"/>
+            <text x="310" y="574" text-anchor="middle">SLO ok?</text>
+          </g>
+
+          <g class="node" :class="{active: active==='promote'}" @click="select('promote')">
+            <rect x="210" y="644" width="200" height="48"/>
+            <text x="310" y="664" text-anchor="middle">Promote 25 → 50 → 100%</text>
+            <text class="sub" x="310" y="680" text-anchor="middle">~8 min</text>
+          </g>
+
+          <g class="node bad" :class="{active: active==='rollback'}" @click="select('rollback')">
+            <rect x="392" y="700" width="170" height="48"/>
+            <text x="477" y="720" text-anchor="middle">Auto-rollback</text>
+            <text class="sub" x="477" y="736" text-anchor="middle">revert image tag</text>
+          </g>
+
+          <g class="node" :class="{active: active==='smoke'}" @click="select('smoke')">
+            <rect x="210" y="730" width="200" height="48"/>
+            <text x="310" y="750" text-anchor="middle">Smoke tests in prod</text>
+            <text class="sub" x="310" y="766" text-anchor="middle">playwright · 90s</text>
+          </g>
+
+          <g class="node ok term" :class="{active: active==='done'}" @click="select('done')">
+            <rect x="230" y="816" width="160" height="44"/>
+            <text x="310" y="843" text-anchor="middle">✅ Deploy complete</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="flex flex-wrap gap-[18px] mt-[18px] text-xs text-gray-700 dark:text-gray-300">
+        <span class="inline-flex items-center gap-2"><i class="w-[22px] h-[14px] [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-[4px] bg-white dark:bg-gray-700 inline-block"></i> process step</span>
+        <span class="inline-flex items-center gap-2"><i class="w-[12px] h-[12px] [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-[2px] bg-white dark:bg-gray-700 rotate-45 inline-block"></i> decision</span>
+        <span class="inline-flex items-center gap-2"><i class="w-[22px] h-[14px] [border:1.5px_solid_#788C5D] rounded-[4px] bg-[rgba(120,140,93,0.12)] dark:bg-[rgba(120,140,93,0.20)] inline-block"></i> terminal success</span>
+        <span class="inline-flex items-center gap-2"><i class="w-[22px] h-[14px] [border:1.5px_solid_#B04A3F] rounded-[4px] bg-[rgba(176,74,63,0.10)] dark:bg-[rgba(176,74,63,0.20)] inline-block"></i> failure path</span>
+      </div>
+    </div>
+
+    <aside class="sticky top-6 [border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-[14px] bg-white dark:bg-gray-800 px-5 pt-5 pb-[22px]">
+      <div class="text-xs text-gray-500 dark:text-gray-400 mb-3.5">Click a step in the chart →</div>
+      <h3 class="font-serif font-medium text-[19px] mb-1.5" x-text="detail.title"></h3>
+      <div class="font-mono text-[11px] text-gray-500 dark:text-gray-400 mb-3.5" x-text="detail.meta"></div>
+      <p class="text-[13.5px] leading-relaxed text-gray-700 dark:text-gray-300 mb-3" x-html="detail.body"></p>
+      <pre class="font-mono text-[11.5px] leading-[1.55] bg-gray-150 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 whitespace-pre-wrap text-slate-dark dark:text-gray-100" x-text="detail.code"></pre>
+    </aside>
+
+  </div>
+</div>
+
+<script>
+function flowchart() {
+  const DETAIL = {
+    push: {
+      title: "git push main",
+      meta: "trigger · 0s",
+      body: "A push or merge to <code>main</code> fires the <code>deploy</code> workflow. Pushes to other branches stop after CI and never reach the image build.",
+      code: "on:\n  push:\n    branches: [main]"
+    },
+    ci: {
+      title: "CI · lint + typecheck",
+      meta: "github actions · ~2 min",
+      body: "Runs ESLint and <code>tsc --noEmit</code> in parallel. This is the only job that also runs on pull-request branches, so it stays fast on purpose.",
+      code: "jobs:\n  lint:\n    run: pnpm lint && pnpm typecheck"
+    },
+    test: {
+      title: "Unit + integration tests",
+      meta: "github actions · ~6 min · 3 shards",
+      body: "Vitest unit suite plus the API integration tests against an ephemeral Postgres. Sharded three ways; the slowest shard gates the pipeline.",
+      code: "strategy:\n  matrix:\n    shard: [1, 2, 3]\nrun: pnpm test --shard ${{ matrix.shard }}/3"
+    },
+    "gate-tests": {
+      title: "Tests pass?",
+      meta: "decision",
+      body: "Any shard failing short-circuits here. Nothing is built, and a red status is posted back to the PR and to <code>#deploys</code>.",
+      code: "needs: [test]\nif: success()"
+    },
+    status: {
+      title: "Post failure status",
+      meta: "side-effect · ~5s",
+      body: "The <code>notify</code> job posts the failing shard's summary to Slack and sets the commit status to <code>failure</code>. Pipeline ends.",
+      code: "uses: slackapi/slack-github-action@v1\nwith:\n  channel: '#deploys'"
+    },
+    build: {
+      title: "Build + push image",
+      meta: "github actions · ~4 min",
+      body: "Docker buildx with layer caching. Tags the image with the short SHA and pushes to GHCR. This is the first step that produces an artifact.",
+      code: "tags: ghcr.io/acme/web:${{ github.sha }}"
+    },
+    canary: {
+      title: "Argo canary 5%",
+      meta: "argo rollouts · 10 min soak",
+      body: "Argo shifts 5% of traffic to the new ReplicaSet and watches the error-rate and p95 SLOs for ten minutes before deciding.",
+      code: "steps:\n  - setWeight: 5\n  - pause: { duration: 10m }\n  - analysis: slo-check"
+    },
+    "gate-canary": {
+      title: "Canary healthy?",
+      meta: "decision · analysis template",
+      body: "The <code>slo-check</code> analysis compares error rate and p95 against the previous revision. Either metric breaching for two consecutive intervals fails the gate.",
+      code: "successCondition: result.error_rate < 0.5\n               && result.p95_ms < 800"
+    },
+    promote: {
+      title: "Promote 25 → 50 → 100%",
+      meta: "argo rollouts · ~8 min",
+      body: "Three more weight steps with a short pause between each. The same analysis runs at every step, so a late regression still aborts.",
+      code: "- setWeight: 25\n- pause: { duration: 2m }\n- setWeight: 50\n- pause: { duration: 2m }\n- setWeight: 100"
+    },
+    rollback: {
+      title: "Auto-rollback",
+      meta: "argo rollouts · ~30s",
+      body: "On a failed analysis Argo flips traffic back to the stable ReplicaSet and marks the rollout <code>Degraded</code>. A page goes to the on-call.",
+      code: "abort:\n  scaleDownDelaySeconds: 30"
+    },
+    smoke: {
+      title: "Smoke tests in prod",
+      meta: "github actions · ~90s",
+      body: "A tiny Playwright suite hits the public URL: load the homepage, sign in with a synthetic account, create and delete one record.",
+      code: "run: pnpm playwright test smoke/\nenv:\n  BASE_URL: https://acme.app"
+    },
+    done: {
+      title: "Deploy complete",
+      meta: "terminal · ~30 min total",
+      body: "Commit status flips to <code>success</code>, the rollout is marked <code>Healthy</code>, and the SHA is recorded as the new stable revision.",
+      code: "✓ web@a1b9e3f live on prod"
+    }
+  };
+  return {
+    active: 'push',
+    detail: DETAIL['push'],
+    select(k) {
+      const fn = () => { this.active = k; this.detail = DETAIL[k] || this.detail; };
+      document.startViewTransition ? document.startViewTransition(fn.bind(this)) : fn.call(this);
+    }
+  };
+}
+</script>
+</body>
+</html>

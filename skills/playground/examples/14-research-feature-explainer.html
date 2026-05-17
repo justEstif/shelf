@@ -1,0 +1,214 @@
+<!doctype html>
+<html x-data lang="en" x-bind:class="{ dark: $store.theme.dark }">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How rate limiting works in acme/api</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+
+  @theme {
+    --color-ivory: #FAF9F5;
+    --color-slate-dark: #141413;
+    --color-clay: #D97757;
+    --color-oat: #E3DACC;
+    --color-olive: #788C5D;
+    --color-gray-150: #F0EEE6;
+    --color-gray-300: #D1CFC5;
+    --color-gray-500: #87867F;
+    --color-gray-700: #3D3D3A;
+    --color-gray-800: #252522;
+    --color-gray-900: #181816;
+    --font-serif: ui-serif, Georgia, "Times New Roman", serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [x-cloak] { display: none; }
+</style>
+<script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        dark: JSON.parse(localStorage.getItem('theme-dark') ?? 'null') ??
+              window.matchMedia('(prefers-color-scheme: dark)').matches,
+        toggle() {
+          this.dark = !this.dark;
+          localStorage.setItem('theme-dark', JSON.stringify(this.dark));
+        }
+      });
+    });
+  </script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+</head>
+<body x-data class="bg-ivory dark:bg-slate-dark text-gray-700 dark:text-gray-300 font-sans text-[15px] leading-[1.65] antialiased py-14 px-6 pb-[120px]">
+<button @click="$store.theme.toggle()"
+        class="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+        :title="$store.theme.dark ? 'Light mode' : 'Dark mode'"
+        x-text="$store.theme.dark ? '☀' : '☾'">
+</button>
+<div class="max-w-[1100px] mx-auto grid grid-cols-[200px_minmax(0,1fr)] gap-12 max-[920px]:grid-cols-1">
+
+  <!-- ── side nav ── -->
+  <nav class="sticky top-8 self-start text-[13px] max-[920px]:hidden">
+    <div class="font-mono text-[10px] tracking-[0.1em] uppercase text-gray-500 dark:text-gray-400 mb-3">On this page</div>
+    <a href="#tldr" class="block py-[5px] pl-3 border-l-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 no-underline hover:text-slate-dark dark:hover:text-gray-50 hover:border-slate-dark dark:hover:border-gray-400">TL;DR</a>
+    <a href="#path" class="block py-[5px] pl-3 border-l-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 no-underline hover:text-slate-dark dark:hover:text-gray-50 hover:border-slate-dark dark:hover:border-gray-400">Request path</a>
+    <a href="#path" class="block py-[5px] pl-6 border-l-2 border-gray-300 dark:border-gray-600 text-[12.5px] text-gray-500 dark:text-gray-400 no-underline hover:text-slate-dark dark:hover:text-gray-50 hover:border-slate-dark dark:hover:border-gray-400">1. Identify</a>
+    <a href="#path" class="block py-[5px] pl-6 border-l-2 border-gray-300 dark:border-gray-600 text-[12.5px] text-gray-500 dark:text-gray-400 no-underline hover:text-slate-dark dark:hover:text-gray-50 hover:border-slate-dark dark:hover:border-gray-400">2. Bucket lookup</a>
+    <a href="#path" class="block py-[5px] pl-6 border-l-2 border-gray-300 dark:border-gray-600 text-[12.5px] text-gray-500 dark:text-gray-400 no-underline hover:text-slate-dark dark:hover:text-gray-50 hover:border-slate-dark dark:hover:border-gray-400">3. Consume</a>
+    <a href="#path" class="block py-[5px] pl-6 border-l-2 border-gray-300 dark:border-gray-600 text-[12.5px] text-gray-500 dark:text-gray-400 no-underline hover:text-slate-dark dark:hover:text-gray-50 hover:border-slate-dark dark:hover:border-gray-400">4. Reject</a>
+    <a href="#config" class="block py-[5px] pl-3 border-l-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 no-underline hover:text-slate-dark dark:hover:text-gray-50 hover:border-slate-dark dark:hover:border-gray-400">Configuring a route</a>
+    <a href="#gotchas" class="block py-[5px] pl-3 border-l-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 no-underline hover:text-slate-dark dark:hover:text-gray-50 hover:border-slate-dark dark:hover:border-gray-400">Gotchas</a>
+    <a href="#faq" class="block py-[5px] pl-3 border-l-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 no-underline hover:text-slate-dark dark:hover:text-gray-50 hover:border-slate-dark dark:hover:border-gray-400">FAQ</a>
+    <div class="mt-7 border-t border-gray-300 dark:border-gray-600 pt-4">
+      <div class="font-mono text-[10px] tracking-[0.1em] uppercase text-gray-500 dark:text-gray-400 mb-3">Files read</div>
+      <code class="block font-mono text-[11px] text-gray-500 dark:text-gray-400 py-[3px]">middleware/ratelimit.ts</code>
+      <code class="block font-mono text-[11px] text-gray-500 dark:text-gray-400 py-[3px]">lib/tokenBucket.ts</code>
+      <code class="block font-mono text-[11px] text-gray-500 dark:text-gray-400 py-[3px]">config/limits.yaml</code>
+      <code class="block font-mono text-[11px] text-gray-500 dark:text-gray-400 py-[3px]">routes/*.ts</code>
+    </div>
+  </nav>
+
+  <!-- ── main ── -->
+  <main>
+    <header class="mb-3">
+      <div class="font-mono text-[11px] tracking-[0.08em] uppercase text-gray-500 dark:text-gray-400 mb-2.5">Research &amp; Learning · feature summary</div>
+      <h1 class="font-serif font-medium text-[32px] text-slate-dark dark:text-ivory tracking-[-0.01em] mb-3.5">How rate limiting works in <code class="font-mono text-[13px]">acme/api</code></h1>
+      <div class="[border:1.5px_solid_#D1CFC5] dark:border-gray-600 [border-left:3px_solid_#D97757] rounded-[10px] bg-white dark:bg-gray-800 py-4 px-[18px] mb-2" id="tldr">
+        <b class="text-slate-dark dark:text-ivory">TL;DR</b> — Every request passes through <code class="font-mono text-[13px]">rateLimit()</code> middleware, which resolves the
+        caller to a <em>bucket key</em>, fetches a token-bucket from Redis, and either consumes one token or
+        returns <code class="font-mono text-[13px]">429</code>. Limits are declared per-route in <code class="font-mono text-[13px]">config/limits.yaml</code>; routes
+        without an entry inherit the <code class="font-mono text-[13px]">default</code> tier (100 req/min per API key).
+      </div>
+    </header>
+
+    <h2 id="path" class="font-serif font-medium text-[22px] text-slate-dark dark:text-ivory mt-10 mb-3.5 [scroll-margin-top:24px]">The request path, step by step</h2>
+    <p class="mb-3 max-w-[680px]">Expand each step to see what runs and where it lives. The whole path is ~40 lines and adds about
+      0.4&nbsp;ms p50 to every request.</p>
+
+    <!-- Step 1 — open by default -->
+    <div x-data="{open: true}" class="[border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-[10px] bg-white dark:bg-gray-800 my-3.5 overflow-hidden">
+      <button @click="open = !open" class="w-full flex items-baseline gap-2.5 px-4 py-3.5 font-serif text-base text-slate-dark dark:text-gray-100 cursor-pointer text-left">
+        <span class="text-clay text-xs transition-transform duration-100" :class="open ? 'rotate-90' : ''">▸</span>
+        1 · Identify the caller
+        <span class="font-mono text-[11px] text-gray-500 dark:text-gray-400 ml-auto">middleware/ratelimit.ts:21</span>
+      </button>
+      <div x-show="open" x-transition class="px-4 pb-4">
+        <p class="text-sm text-gray-700 dark:text-gray-300">The middleware first reduces the request to a <code class="font-mono text-[13px]">bucketKey</code>: API key if an
+          <code class="font-mono text-[13px]">Authorization</code> header is present, otherwise the client IP (via the
+          <code class="font-mono text-[13px]">x-forwarded-for</code> chain, trusting only our own LB). Anonymous IP traffic gets a much
+          lower default tier.</p>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div x-data="{open: false}" class="[border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-[10px] bg-white dark:bg-gray-800 my-3.5 overflow-hidden">
+      <button @click="open = !open" class="w-full flex items-baseline gap-2.5 px-4 py-3.5 font-serif text-base text-slate-dark dark:text-gray-100 cursor-pointer text-left">
+        <span class="text-clay text-xs transition-transform duration-100" :class="open ? 'rotate-90' : ''">▸</span>
+        2 · Look up the bucket
+        <span class="font-mono text-[11px] text-gray-500 dark:text-gray-400 ml-auto">lib/tokenBucket.ts:9</span>
+      </button>
+      <div x-show="open" x-transition class="px-4 pb-4">
+        <p class="text-sm text-gray-700 dark:text-gray-300">The route name plus bucket key map to a Redis hash (<code class="font-mono text-[13px]">rl:{route}:{key}</code>) holding
+          <code class="font-mono text-[13px]">tokens</code> and <code class="font-mono text-[13px]">updatedAt</code>. If the key is missing it's created lazily at full
+          capacity — there's no warm-up.</p>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div x-data="{open: false}" class="[border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-[10px] bg-white dark:bg-gray-800 my-3.5 overflow-hidden">
+      <button @click="open = !open" class="w-full flex items-baseline gap-2.5 px-4 py-3.5 font-serif text-base text-slate-dark dark:text-gray-100 cursor-pointer text-left">
+        <span class="text-clay text-xs transition-transform duration-100" :class="open ? 'rotate-90' : ''">▸</span>
+        3 · Refill and consume
+        <span class="font-mono text-[11px] text-gray-500 dark:text-gray-400 ml-auto">lib/tokenBucket.ts:31</span>
+      </button>
+      <div x-show="open" x-transition class="px-4 pb-4">
+        <p class="text-sm text-gray-700 dark:text-gray-300">Refill is computed from elapsed time (<code class="font-mono text-[13px]">rate × Δt</code>, capped at <code class="font-mono text-[13px]">burst</code>), then
+          one token is subtracted. The whole read-modify-write runs as a single Lua script so concurrent
+          requests can't double-spend.</p>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div x-data="{open: false}" class="[border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-[10px] bg-white dark:bg-gray-800 my-3.5 overflow-hidden">
+      <button @click="open = !open" class="w-full flex items-baseline gap-2.5 px-4 py-3.5 font-serif text-base text-slate-dark dark:text-gray-100 cursor-pointer text-left">
+        <span class="text-clay text-xs transition-transform duration-100" :class="open ? 'rotate-90' : ''">▸</span>
+        4 · Reject when empty
+        <span class="font-mono text-[11px] text-gray-500 dark:text-gray-400 ml-auto">middleware/ratelimit.ts:48</span>
+      </button>
+      <div x-show="open" x-transition class="px-4 pb-4">
+        <p class="text-sm text-gray-700 dark:text-gray-300">If the script returns <code class="font-mono text-[13px]">tokens &lt; 0</code> the middleware short-circuits with
+          <code class="font-mono text-[13px]">429 Too Many Requests</code> and sets <code class="font-mono text-[13px]">Retry-After</code> to the seconds until one token
+          refills. Successful responses always carry <code class="font-mono text-[13px]">X-RateLimit-Remaining</code>.</p>
+      </div>
+    </div>
+
+    <h2 id="config" class="font-serif font-medium text-[22px] text-slate-dark dark:text-ivory mt-10 mb-3.5 [scroll-margin-top:24px]">Configuring a limit on your route</h2>
+    <p class="mb-3 max-w-[680px]">You don't touch the middleware. Add an entry to <code class="font-mono text-[13px]">config/limits.yaml</code> keyed by route name,
+      and (optionally) tag the route so the middleware can find it.</p>
+
+    <!-- Code tabs -->
+    <div x-data="{tab: 0}" class="[border:1.5px_solid_#D1CFC5] dark:border-gray-600 rounded-[10px] bg-white dark:bg-gray-800 my-4 overflow-hidden">
+      <div class="flex border-b border-gray-300 dark:border-gray-600 bg-gray-150 dark:bg-gray-700">
+        <button @click="tab=0" :class="tab===0 ? 'bg-white dark:bg-gray-800 text-slate-dark dark:text-gray-100 border-b-[2px] border-b-clay -mb-px' : 'text-gray-500 dark:text-gray-400'" class="font-mono text-xs py-2.5 px-4 border-r border-gray-300 dark:border-gray-600 cursor-pointer">limits.yaml</button>
+        <button @click="tab=1" :class="tab===1 ? 'bg-white dark:bg-gray-800 text-slate-dark dark:text-gray-100 border-b-[2px] border-b-clay -mb-px' : 'text-gray-500 dark:text-gray-400'" class="font-mono text-xs py-2.5 px-4 border-r border-gray-300 dark:border-gray-600 cursor-pointer">route.ts</button>
+        <button @click="tab=2" :class="tab===2 ? 'bg-white dark:bg-gray-800 text-slate-dark dark:text-gray-100 border-b-[2px] border-b-clay -mb-px' : 'text-gray-500 dark:text-gray-400'" class="font-mono text-xs py-2.5 px-4 cursor-pointer">client response</button>
+      </div>
+      <pre x-show="tab===0" class="m-0 p-4 font-mono text-[12.5px] leading-relaxed text-slate-dark dark:text-gray-100 overflow-x-auto"><span class="text-gray-500 dark:text-gray-400"># config/limits.yaml</span>
+default:
+  rate: 100/min
+  burst: 120
+
+<span class="text-clay">search.query</span>:
+  rate: 20/min
+  burst: 40
+  key: api_key        <span class="text-gray-500 dark:text-gray-400"># or: ip</span></pre>
+      <pre x-show="tab===1" class="m-0 p-4 font-mono text-[12.5px] leading-relaxed text-slate-dark dark:text-gray-100 overflow-x-auto"><span class="text-gray-500 dark:text-gray-400">// routes/search.ts</span>
+router.post(
+  "/search",
+  <span class="text-clay">rateLimit("search.query")</span>,
+  handler,
+);</pre>
+      <pre x-show="tab===2" class="m-0 p-4 font-mono text-[12.5px] leading-relaxed text-slate-dark dark:text-gray-100 overflow-x-auto">HTTP/1.1 429 Too Many Requests
+Retry-After: 17
+X-RateLimit-Limit: 20
+X-RateLimit-Remaining: 0
+
+{ "error": "rate_limited", "retry_after": 17 }</pre>
+    </div>
+
+    <div class="flex gap-3 [border:1.5px_solid_#E3DACC] dark:border-gray-600 bg-[rgba(227,218,204,0.35)] dark:bg-orange-900/20 rounded-[10px] p-4 my-[18px] text-sm">
+      <span class="text-clay font-semibold">★</span>
+      <div>If you only need the default tier, you don't need a YAML entry at all — just wrap the handler in
+        <code class="font-mono text-[13px]">rateLimit()</code> with no argument. The route name is inferred from the path.</div>
+    </div>
+
+    <h2 id="gotchas" class="font-serif font-medium text-[22px] text-slate-dark dark:text-ivory mt-10 mb-3.5 [scroll-margin-top:24px]">Gotchas worth knowing</h2>
+    <ul class="pl-5 max-w-[680px]">
+      <li class="mb-2"><b>Limits are per-process in dev.</b> The Redis client falls back to an
+        in-memory map when <code class="font-mono text-[13px]">REDIS_URL</code> is unset, so local testing won't reflect real cluster
+        behaviour.</li>
+      <li class="mb-2"><b>Burst ≠ rate.</b> <code class="font-mono text-[13px]">burst</code> is the bucket capacity; a caller
+        idle for a minute can fire <code class="font-mono text-[13px]">burst</code> requests instantly even if <code class="font-mono text-[13px]">rate</code> is low.</li>
+      <li class="mb-2"><b>Streaming responses count once.</b> The token is consumed at request start; a 30-second SSE
+        stream still costs one token.</li>
+    </ul>
+
+    <h2 id="faq" class="font-serif font-medium text-[22px] text-slate-dark dark:text-ivory mt-10 mb-3.5 [scroll-margin-top:24px]">FAQ</h2>
+    <dl class="mt-2">
+      <dt class="font-serif text-base text-slate-dark dark:text-ivory mt-[18px]">How do I exempt internal traffic?</dt>
+      <dd class="text-sm mt-1 max-w-[640px]">Set <code class="font-mono text-[13px]">x-acme-internal: 1</code> from the caller; the middleware checks it against the
+        mTLS peer name and skips the bucket entirely.</dd>
+
+      <dt class="font-serif text-base text-slate-dark dark:text-ivory mt-[18px]">Where do I see who's getting limited?</dt>
+      <dd class="text-sm mt-1 max-w-[640px]">Every <code class="font-mono text-[13px]">429</code> emits a <code class="font-mono text-[13px]">ratelimit.rejected</code> metric tagged with route and key
+        type. There's a Grafana panel under <em>API → Health</em>.</dd>
+
+      <dt class="font-serif text-base text-slate-dark dark:text-ivory mt-[18px]">Can a single user have a higher limit?</dt>
+      <dd class="text-sm mt-1 max-w-[640px]">Yes — add their API key under <code class="font-mono text-[13px]">overrides:</code> in the YAML. Overrides are reloaded without
+        a deploy.</dd>
+    </dl>
+  </main>
+
+</div>
+</body>
+</html>

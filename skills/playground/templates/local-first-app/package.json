@@ -1,0 +1,17 @@
+{
+  "name": "localtrack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build worker.ts --outfile worker.js --target browser --minify",
+    "dev":   "bun run build && bunx serve . --cors",
+    "watch": "bun build worker.ts --outfile worker.js --target browser --watch"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.2.0"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}

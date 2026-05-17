@@ -124,11 +124,9 @@ document.startViewTransition ? document.startViewTransition(update) : update();
 | Branching concept map | Mind map | — |
 | Gantt / roadmap / timeline | Timeline roadmap | — |
 | Brainstorm N-variant grid | Brainstorm grid | — |
-| Local-first single-user app (SQLite, OPFS, no backend) | Local-first app | `templates/local-first-app/` |
 
-**MANDATORY READ — `references/html-artifacts.md`**: per-type guidance (slide decks, throwaway editors, diagrams, data explorers, local-first app, etc.), design system tokens, scannability rules, and GitHub Pages delivery.
 
-**MANDATORY READ — `references/local-first.md`**: persistence ladder, JS-first stance, Worker architecture, AI integration ladder, and export/import pattern. Read before adding persistence, import/export, or model integration to any artifact.
+**MANDATORY READ — `references/html-artifacts.md`**: per-type guidance (slide decks, throwaway editors, diagrams, data explorers, etc.), design system tokens, scannability rules, and GitHub Pages delivery.
 
 ---
 

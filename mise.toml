@@ -1,0 +1,31 @@
+[tools]
+go = "latest"
+"go:github.com/a-h/templ/cmd/templ" = "latest"
+"go:github.com/air-verse/air" = "latest"
+
+[env]
+PORT = "3000"
+BASE_URL = "http://localhost:3000"
+SHELF_PASSWORD = "change-me"
+SHELF_PAGES_DIR = "./pages"
+SHELF_DATA_DIR = "./data"
+CSRF_KEY = "32-byte-long-auth-key-change-me-xx"
+
+[tasks.dev]
+description = "Start development server with live reload"
+run = "air"
+
+[tasks.build]
+description = "Build production binary"
+run = """
+./tailwindcss -i styles/input.css -o static/css/tailwind.css --minify
+templ generate
+go build -o bin/shelf cmd/web/main.go
+"""
+
+[tasks.setup]
+description = "Initial project setup"
+run = """
+mkdir -p pages data static/css
+templ generate
+"""

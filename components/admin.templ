@@ -1,0 +1,139 @@
+package components
+
+import (
+	"github.com/justestif/shelf/internal/storage"
+)
+
+templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadMsg string) {
+	@Layout("Admin") {
+		<div class="max-w-4xl mx-auto">
+			<h1 class="text-3xl font-bold mb-6">Admin</h1>
+
+			<!-- Upload section -->
+			<div class="card bg-base-100 shadow-sm mb-6">
+				<div class="card-body">
+					<h2 class="card-title text-lg">Upload</h2>
+					if uploadMsg != "" {
+						<div class="alert alert-warning mb-3">
+							<span>{ uploadMsg }</span>
+						</div>
+					}
+					<form hx-post="/admin/upload" hx-target="#file-list" hx-swap="outerHTML" hx-encoding="multipart/form-data" class="space-y-3">
+						<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+						<input type="text" name="folder" placeholder="Folder name (optional, for multi-file uploads)" class="input input-bordered w-full"/>
+						<input type="file" name="files" multiple class="file-input file-input-bordered w-full"/>
+						<button type="submit" class="btn btn-primary">Upload</button>
+					</form>
+
+					<!-- Drag & drop zone -->
+					<div id="drop-zone" class="border-2 border-dashed border-base-300 rounded-lg p-8 text-center text-base-content/50 mt-3 cursor-pointer hover:border-primary hover:text-primary transition-colors"
+						onclick="document.querySelector('input[name=files]').click()">
+						Drop files here or click to browse
+					</div>
+				</div>
+			</div>
+
+			<!-- Files section -->
+			<div class="card bg-base-100 shadow-sm mb-6">
+				<div class="card-body">
+					<h2 class="card-title text-lg">Files</h2>
+					@fileListPartial(entries, csrfToken, "")
+				</div>
+			</div>
+
+			<!-- Token section -->
+			<div class="card bg-base-100 shadow-sm">
+				<div class="card-body">
+					<h2 class="card-title text-lg">API Token</h2>
+					<p class="text-sm text-base-content/60 mb-3">Use this token to authenticate API requests. Pass it as <code class="bg-base-200 px-1 rounded">Authorization: Bearer &lt;token&gt;</code></p>
+					@tokenPartial(token)
+					<form hx-post="/admin/token" hx-target="#token-display" hx-swap="outerHTML" class="mt-3">
+						<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+						<button type="submit" class="btn btn-warning btn-sm">Generate New Token</button>
+					</form>
+				</div>
+			</div>
+
+			<!-- Logout -->
+			<div class="mt-6">
+				<form method="post" action="/admin/logout">
+					<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+					<button type="submit" class="btn btn-ghost btn-sm">Logout</button>
+				</form>
+			</div>
+		</div>
+
+		<!-- Drag & drop JS -->
+		<script>
+			const dropZone = document.getElementById('drop-zone');
+			if (dropZone) {
+				['dragenter', 'dragover'].forEach(evt => {
+					dropZone.addEventListener(evt, e => {
+						e.preventDefault();
+						dropZone.classList.add('border-primary', 'text-primary', 'bg-primary/5');
+					});
+				});
+				['dragleave', 'drop'].forEach(evt => {
+					dropZone.addEventListener(evt, e => {
+						e.preventDefault();
+						dropZone.classList.remove('border-primary', 'text-primary', 'bg-primary/5');
+					});
+				});
+				dropZone.addEventListener('drop', e => {
+					const input = document.querySelector('input[name="files"]');
+					input.files = e.dataTransfer.files;
+					// Auto-submit via HTMX
+					htmx.trigger(input.closest('form'), 'submit');
+				});
+			}
+		</script>
+	}
+}
+
+templ fileListPartial(entries []storage.Entry, csrfToken string, errMsg string) {
+	<div id="file-list">
+		if errMsg != "" {
+			<div class="alert alert-warning mb-3">
+				<span class="text-sm">{ errMsg }</span>
+			</div>
+		}
+		if len(entries) == 0 {
+			<p class="text-base-content/50 text-sm py-4">No files uploaded yet.</p>
+		}
+		for _, entry := range entries {
+			if !entry.IsDir {
+				<div class="flex items-center justify-between p-3 bg-base-200 rounded-lg mb-2">
+					<div class="flex items-center gap-3">
+						<span>📄</span>
+						<div>
+							<span class="font-mono text-sm">{ entry.Path }</span>
+							<span class="text-xs text-base-content/50 ml-2">{ storage.FormatFileSize(entry.Size) }</span>
+						</div>
+					</div>
+					<div class="flex gap-2">
+						<a href={ templ.SafeURL("/" + entry.Path) } class="btn btn-ghost btn-xs" target="_blank">View</a>
+						<button class="btn btn-ghost btn-xs text-error"
+							hx-delete={ "/admin/delete/" + entry.Path }
+							hx-target="#file-list"
+							hx-swap="outerHTML"
+							hx-headers={ `{ "X-CSRF-Token": "` + csrfToken + `" }` }>
+							Delete
+						</button>
+					</div>
+				</div>
+			}
+		}
+	</div>
+}
+
+templ tokenPartial(token string) {
+	<div id="token-display">
+		if token != "" {
+			<div class="bg-base-200 rounded-lg p-3 font-mono text-sm break-all select-all">
+				{ token }
+			</div>
+		} else {
+			<p class="text-base-content/50 text-sm">No token generated yet. Click generate to create one.</p>
+		}
+	</div>
+}

@@ -1,0 +1,35 @@
+package components
+
+templ loginPage(csrfToken string, errorMsg string) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="light">
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>Login — Shelf</title>
+		<link rel="stylesheet" href="/static/css/tailwind.css"/>
+	</head>
+	<body class="min-h-screen bg-base-200 flex items-center justify-center">
+		<div class="card bg-base-100 shadow-xl w-96">
+			<div class="card-body">
+				<h1 class="text-2xl font-bold text-center mb-4">📚 Shelf</h1>
+				if errorMsg != "" {
+					<div class="alert alert-error mb-4">
+						<span>{ errorMsg }</span>
+					</div>
+				}
+				<form method="post" action="/admin/login">
+					<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+					<div class="form-control mb-4">
+						<label class="label">
+							<span class="label-text">Password</span>
+						</label>
+						<input type="password" name="password" class="input input-bordered w-full" autocomplete="current-password" autofocus/>
+					</div>
+					<button type="submit" class="btn btn-primary w-full">Login</button>
+				</form>
+			</div>
+		</div>
+	</body>
+	</html>
+}

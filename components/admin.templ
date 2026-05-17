@@ -70,13 +70,13 @@ templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadM
 				['dragenter', 'dragover'].forEach(evt => {
 					dropZone.addEventListener(evt, e => {
 						e.preventDefault();
-						dropZone.classList.add('border-primary', 'text-primary', 'bg-primary/5');
+						dropZone.classList.add('border-info', 'text-info', 'bg-info/5');
 					});
 				});
 				['dragleave', 'drop'].forEach(evt => {
 					dropZone.addEventListener(evt, e => {
 						e.preventDefault();
-						dropZone.classList.remove('border-primary', 'text-primary', 'bg-primary/5');
+						dropZone.classList.remove('border-info', 'text-info', 'bg-info/5');
 					});
 				});
 				dropZone.addEventListener('drop', e => {

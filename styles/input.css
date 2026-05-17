@@ -4,3 +4,89 @@
 @source not "../daisyui{,*}.mjs";
 
 @plugin "../daisyui.mjs";
+
+/* ─── Custom Tailwind tokens from DESIGN.md ─── */
+@theme {
+   --color-ink: #181d26;
+   --color-body: #333840;
+   --color-muted: #41454d;
+   --color-hairline: #dddddd;
+   --color-border-strong: #9297a0;
+   --color-canvas: #ffffff;
+   --color-surface-soft: #f8fafc;
+   --color-surface-strong: #e0e2e6;
+   --color-surface-dark: #181d26;
+   --color-signature-coral: #aa2d00;
+   --color-signature-forest: #0a2e0e;
+   --color-signature-cream: #f5e9d4;
+   --color-signature-peach: #fcab79;
+   --color-signature-mint: #a8d8c4;
+   --color-on-primary: #ffffff;
+   --color-on-dark: #ffffff;
+   --color-link: #1b61c9;
+   --color-link-active: #1a3866;
+   --color-info-border: #458fff;
+
+   --radius-xs: 2px;
+   --radius-sm: 6px;
+   --radius-md: 10px;
+   --radius-lg: 12px;
+   --radius-pill: 9999px;
+
+   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue",
+      sans-serif;
+}
+
+/* ─── daisyUI theme override — maps DESIGN.md to daisyUI variables ─── */
+@layer base {
+   [data-theme="light"] {
+      color-scheme: light;
+
+      /* Surfaces */
+      --color-base-100: #ffffff;
+      /* canvas */
+      --color-base-200: #f8fafc;
+      /* surface-soft */
+      --color-base-300: #e0e2e6;
+      /* surface-strong */
+      --color-base-content: #181d26;
+      /* ink */
+
+      /* Primary — near-black */
+      --color-primary: #181d26;
+      --color-primary-content: #ffffff;
+
+      /* Secondary — light surface */
+      --color-secondary: #e0e2e6;
+      --color-secondary-content: #181d26;
+
+      /* Accent — coral */
+      --color-accent: #aa2d00;
+      --color-accent-content: #ffffff;
+
+      /* Neutral */
+      --color-neutral: #41454d;
+      --color-neutral-content: #ffffff;
+
+      /* Semantic */
+      --color-info: #254fad;
+      --color-info-content: #ffffff;
+      --color-success: #006400;
+      --color-success-content: #ffffff;
+      --color-warning: #d9a441;
+      --color-warning-content: #181d26;
+      --color-error: #aa2d00;
+      --color-error-content: #ffffff;
+
+      /* Structure */
+      --radius-box: 0.625rem;
+      /* 10px — md */
+      --radius-field: 0.375rem;
+      /* 6px — sm */
+      --radius-selector: 0.375rem;
+      --border: 1px;
+      --depth: 0.5;
+      --noise: 0;
+   }
+}

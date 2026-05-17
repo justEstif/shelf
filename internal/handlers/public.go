@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/alexedwards/scs/v2"
-	"github.com/justestif/shelf/internal/auth"
+	"github.com/justestif/shelf/components"
 	"github.com/justestif/shelf/internal/config"
 	"github.com/justestif/shelf/internal/storage"
 )
@@ -36,7 +36,7 @@ func (h *Handler) PublicServe(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to list files", http.StatusInternalServerError)
 			return
 		}
-		renderPublicIndex(w, r, entries, "")
+		_ = components.PublicIndex(entries, "").Render(r.Context(), w)
 		return
 	}
 
@@ -65,15 +65,11 @@ func (h *Handler) PublicServe(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasSuffix(prefix, "/") {
 			prefix += "/"
 		}
-		renderPublicIndex(w, r, entries, prefix)
+		_ = components.PublicIndex(entries, prefix).Render(r.Context(), w)
 		return
 	}
 
 	// File: serve with correct content type
 	w.Header().Set("Content-Type", storage.ContentType(fullPath))
 	http.ServeFile(w, r, fullPath)
-}
-
-func renderPublicIndex(w http.ResponseWriter, r *http.Request, entries []storage.Entry, prefix string) {
-	_ = publicIndex(entries, prefix).Render(r.Context(), w)
 }

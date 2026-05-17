@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/csrf"
 
+	"github.com/justestif/shelf/components"
 	"github.com/justestif/shelf/internal/auth"
 )
 
@@ -15,7 +16,7 @@ func (h *Handler) LoginForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin", http.StatusSeeOther)
 		return
 	}
-	loginPage(csrf.Token(r), "").Render(r.Context(), w)
+	_ = components.LoginPage(csrf.Token(r), "").Render(r.Context(), w)
 }
 
 // Login validates the password and creates a session.
@@ -23,7 +24,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	if !auth.CheckPassword(password, h.cfg.Password) {
-		loginPage(csrf.Token(r), "Invalid password").Render(r.Context(), w)
+		_ = components.LoginPage(csrf.Token(r), "Invalid password").Render(r.Context(), w)
 		return
 	}
 

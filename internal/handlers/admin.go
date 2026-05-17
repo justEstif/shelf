@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/csrf"
 
+	"github.com/justestif/shelf/components"
 	"github.com/justestif/shelf/internal/auth"
 	"github.com/justestif/shelf/internal/storage"
 )
@@ -19,7 +20,7 @@ import (
 func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 	entries, _ := storage.Walk(h.cfg.PagesDir)
 	token := auth.GetToken(h.cfg.DataDir)
-	adminPage(entries, token, csrf.Token(r), "").Render(r.Context(), w)
+	_ = components.AdminPage(entries, token, csrf.Token(r), "").Render(r.Context(), w)
 }
 
 // Upload handles HTMX file uploads. Returns an HTML partial on success.
@@ -34,7 +35,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	if len(files) == 0 {
 		entries, _ := storage.Walk(h.cfg.PagesDir)
-		fileListPartial(entries, csrf.Token(r), "No files selected").Render(r.Context(), w)
+		_ = components.FileListPartial(entries, csrf.Token(r), "No files selected").Render(r.Context(), w)
 		return
 	}
 
@@ -89,8 +90,9 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errMsg := strings.Join(errors, "; ")
-	entries, _ := storage.Walk(h.cfg.PagesDir)
-	fileListPartial(entries, csrf.Token(r), errMsg).Render(r.Context(), w)
+	var entries []storage.Entry
+	entries, _ = storage.Walk(h.cfg.PagesDir)
+	_ = components.FileListPartial(entries, csrf.Token(r), errMsg).Render(r.Context(), w)
 }
 
 // Delete handles HTMX delete requests. Returns the updated file list partial.
@@ -113,8 +115,9 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entries, _ := storage.Walk(h.cfg.PagesDir)
-	fileListPartial(entries, csrf.Token(r), "").Render(r.Context(), w)
+	var entries []storage.Entry
+	entries, _ = storage.Walk(h.cfg.PagesDir)
+	_ = components.FileListPartial(entries, csrf.Token(r), "").Render(r.Context(), w)
 }
 
 // TokenGenerate creates or regenerates the API token. Returns the token display partial.
@@ -124,7 +127,7 @@ func (h *Handler) TokenGenerate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
 	}
-	tokenPartial(token).Render(r.Context(), w)
+	_ = components.TokenPartial(token).Render(r.Context(), w)
 }
 
 // --- API Handlers (JSON) ---

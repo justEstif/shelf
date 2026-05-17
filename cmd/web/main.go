@@ -51,15 +51,12 @@ func main() {
 	if len(csrfKey) != 32 {
 		log.Fatal("CSRF_KEY must be exactly 32 bytes long")
 	}
-	csrfMw := customMiddleware.SetupCSRF(csrfKey, cfg.IsProduction())
+	csrfMw := customMiddleware.SetupCSRF(csrfKey, cfg.IsProduction(), cfg.BaseURL)
 
 	// Static files (CSS — no CSRF needed)
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	// Public routes (GET only, no CSRF needed)
-	r.Get("/*", h.PublicServe)
-
-	// Login routes (CSRF, no auth required)
+	// Login routes (CSRF, no auth required) — must be before the wildcard
 	r.Group(func(r chi.Router) {
 		r.Use(csrfMw)
 		r.Get("/admin/login", h.LoginForm)
@@ -84,6 +81,9 @@ func main() {
 		r.Post("/upload", h.APIUpload)
 		r.Delete("/files/*", h.APIDelete)
 	})
+
+	// Public routes (GET only, catch-all — must be last)
+	r.Get("/*", h.PublicServe)
 
 	port := cfg.Port
 	log.Printf("Shelf starting on http://localhost:%s", port)

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -154,13 +155,13 @@ func FormatFileSize(size int64) string {
 	)
 	switch {
 	case size >= GB:
-		return strings.FormatFloat(float64(size)/float64(GB), 'f', 1, 64) + " GB"
+		return fmt.Sprintf("%.1f GB", float64(size)/float64(GB))
 	case size >= MB:
-		return strings.FormatFloat(float64(size)/float64(MB), 'f', 1, 64) + " MB"
+		return fmt.Sprintf("%.1f MB", float64(size)/float64(MB))
 	case size >= KB:
-		return strings.FormatFloat(float64(size)/float64(KB), 'f', 1, 64) + " KB"
+		return fmt.Sprintf("%.1f KB", float64(size)/float64(KB))
 	default:
-		return strings.Itoa(int(size)) + " B"
+		return fmt.Sprintf("%d B", size)
 	}
 }
 

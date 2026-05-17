@@ -2,9 +2,12 @@ bin/
 tmp/
 data/
 pages/
-static/css/
 .git/
-.air.toml
-mise.toml
 *.md
+mise.toml
+shelf-plan.html
+skills-lock.json
+tailwindcss
 .env
+.idea/
+.vscode/

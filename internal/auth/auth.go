@@ -11,7 +11,10 @@ import (
 	"github.com/alexedwards/scs/v2"
 )
 
-const SessionAuthKey = "authenticated"
+const (
+	SessionAuthKey       = "authenticated"
+	SessionViewerAuthKey = "viewer_authenticated"
+)
 
 // NewSessionManager creates an in-memory session manager.
 // Sessions are lost on server restart — re-login required.
@@ -41,6 +44,16 @@ func ClearAuthentication(sm *scs.SessionManager, w http.ResponseWriter, r *http.
 	sm.Remove(r.Context(), SessionAuthKey)
 }
 
+// IsViewerAuthenticated checks if the viewer has entered the page password.
+func IsViewerAuthenticated(sm *scs.SessionManager, r *http.Request) bool {
+	return sm.GetBool(r.Context(), SessionViewerAuthKey)
+}
+
+// AuthenticateViewer marks the viewer session as authenticated.
+func AuthenticateViewer(sm *scs.SessionManager, w http.ResponseWriter, r *http.Request) {
+	sm.Put(r.Context(), SessionViewerAuthKey, true)
+}
+
 // CheckPassword compares a password against the configured value.
 func CheckPassword(password, configured string) bool {
 	return password == configured
@@ -51,7 +64,7 @@ func CheckPassword(password, configured string) bool {
 // GenerateToken creates a cryptographically random token and saves it to disk.
 // Returns the plaintext token (shown once to the user).
 func GenerateToken(dataDir string) (string, error) {
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return "", err
 	}
 
@@ -63,7 +76,7 @@ func GenerateToken(dataDir string) (string, error) {
 	token := hex.EncodeToString(bytes)
 	path := filepath.Join(dataDir, "api_token")
 
-	return token, os.WriteFile(path, []byte(token), 0600)
+	return token, os.WriteFile(path, []byte(token), 0o600)
 }
 
 // GetToken reads the stored API token from disk.

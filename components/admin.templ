@@ -4,7 +4,7 @@ import (
 	"github.com/justestif/shelf/internal/storage"
 )
 
-templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadMsg string) {
+templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadMsg string, visibility map[string]string) {
 	@Layout("Admin") {
 		<div class="max-w-4xl mx-auto">
 			<h1 class="text-3xl font-medium text-ink mb-8">Admin</h1>
@@ -36,7 +36,7 @@ templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadM
 			<!-- Files section -->
 			<section class="mb-8">
 				<h2 class="text-lg font-medium text-ink mb-3">Files</h2>
-				@fileListPartial(entries, csrfToken, "")
+				@fileListPartial(entries, csrfToken, "", visibility)
 			</section>
 
 			<!-- Token section -->
@@ -88,7 +88,7 @@ templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadM
 	}
 }
 
-templ fileListPartial(entries []storage.Entry, csrfToken string, errMsg string) {
+templ fileListPartial(entries []storage.Entry, csrfToken string, errMsg string, visibility map[string]string) {
 	<div id="file-list">
 		if errMsg != "" {
 			<div class="text-sm text-warning bg-warning/10 rounded-md px-4 py-3 mb-4">
@@ -116,7 +116,8 @@ templ fileListPartial(entries []storage.Entry, csrfToken string, errMsg string) 
 								}
 							</div>
 						</div>
-						<div class="flex gap-3">
+						<div class="flex gap-3 items-center">
+							@visibilityBadge(entry.Path, visibility[entry.Path], csrfToken)
 							<a href={ templ.SafeURL("/" + entry.Path) } class="text-xs text-link" target="_blank">View</a>
 							<button class="text-xs text-error"
 								hx-delete={ "/admin/delete/" + entry.Path }
@@ -142,5 +143,27 @@ templ tokenPartial(token string) {
 		} else {
 			<p class="text-sm text-muted">No token generated yet. Click generate to create one.</p>
 		}
+	</div>
+}
+
+templ visibilityBadge(path string, visibility string, csrfToken string) {
+	<div class="flex items-center gap-2" hx-target="this" hx-swap="outerHTML">
+		if visibility == "public" {
+			<span class="text-xs px-2 py-0.5 rounded-sm bg-surface-soft text-muted">Public</span>
+		} else if visibility == "private" {
+			<span class="text-xs px-2 py-0.5 rounded-sm bg-ink text-on-dark">Private</span>
+		} else if visibility == "protected" {
+			<span class="text-xs px-2 py-0.5 rounded-sm bg-coral text-on-dark">Protected</span>
+		}
+		<form method="post" action="/admin/visibility" class="inline-flex">
+			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+			<input type="hidden" name="path" value={ path }/>
+			<select name="visibility" onchange="htmx.trigger(this.closest('form'), 'submit')"
+				class="text-xs bg-canvas border border-hairline rounded-sm px-1.5 py-0.5 text-body focus:outline-none focus:border-info-border">
+				<option value="public" selected={ visibility == "public" }>Public</option>
+				<option value="private" selected={ visibility == "private" }>Private</option>
+				<option value="protected" selected={ visibility == "protected" }>Protected</option>
+			</select>
+		</form>
 	</div>
 }

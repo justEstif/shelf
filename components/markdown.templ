@@ -1,0 +1,65 @@
+package components
+
+templ markdownPreview(content string, filePath string) {
+	@Layout(filePath) {
+		<div class="max-w-3xl mx-auto">
+			<div class="flex items-center justify-between mb-6">
+				<h1 class="text-2xl font-medium text-ink">{ filePath }</h1>
+				<a href={ templ.SafeURL("/" + filePath + "?raw") } class="text-sm text-link">Raw</a>
+			</div>
+			<div class="bg-canvas border border-hairline rounded-lg px-8 py-6">
+				<div id="md-content" class="hidden">{ content }</div>
+				<div id="md-render"></div>
+			</div>
+		</div>
+		<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+		<script type="module">
+			import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+			mermaid.initialize({ startOnLoad: false, theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default' });
+
+			const raw = document.getElementById('md-content').textContent;
+
+			// Strip YAML front matter and render as collapsible summary
+			let src = raw;
+			let yamlBlock = null;
+			if (raw.startsWith('---')) {
+				const end = raw.indexOf('---', 3);
+				if (end !== -1) {
+					yamlBlock = raw.slice(3, end).trim();
+					src = raw.slice(end + 3).replace(/^\n+/, '');
+				}
+			}
+
+			// Custom extension: render ```mermaid blocks as <pre class="mermaid">
+			const mermaidBlocks = [];
+			const stripped = src.replace(/```mermaid\n([\s\S]*?)```/g, (_, code) => {
+				const idx = mermaidBlocks.length;
+				mermaidBlocks.push(code.trim());
+				return `<div id="mermaid-placeholder-${idx}"></div>`;
+			});
+
+			let html = '';
+			if (yamlBlock) {
+				html += '<details class="mb-4 border border-hairline rounded-md">';
+				html += '<summary class="px-3 py-1.5 text-xs text-muted cursor-pointer select-none hover:bg-surface-soft">Metadata</summary>';
+				html += '<pre class="px-3 py-2 text-xs text-body bg-surface-soft border-t border-hairline overflow-x-auto">' + yamlBlock.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
+				html += '</details>';
+			}
+			html += marked.parse(stripped, { gfm: true, breaks: true });
+
+			document.getElementById('md-render').innerHTML = html;
+
+			// Render mermaid diagrams
+			for (let i = 0; i < mermaidBlocks.length; i++) {
+				try {
+					const { svg } = await mermaid.render(`mermaid-svg-${i}`, mermaidBlocks[i]);
+					const el = document.getElementById(`mermaid-placeholder-${i}`);
+					if (el) el.innerHTML = svg;
+				} catch (e) {
+					const el = document.getElementById(`mermaid-placeholder-${i}`);
+					if (el) el.textContent = 'Mermaid render error: ' + e.message;
+				}
+			}
+		</script>
+	}
+}

@@ -14,6 +14,7 @@ import (
 	"github.com/justestif/shelf/internal/config"
 	"github.com/justestif/shelf/internal/handlers"
 	customMiddleware "github.com/justestif/shelf/internal/middleware"
+	"github.com/justestif/shelf/internal/storage"
 )
 
 //go:embed static
@@ -37,8 +38,11 @@ func main() {
 	// Session manager (in-memory, lost on restart)
 	sm := auth.NewSessionManager()
 
+	// Metadata store (visibility settings per path)
+	ms := storage.NewMetadataStore(cfg.DataDir)
+
 	// Handler
-	h := handlers.New(cfg, sm)
+	h := handlers.New(cfg, sm, ms)
 
 	r := chi.NewRouter()
 
@@ -70,6 +74,10 @@ func main() {
 		r.Use(csrfMw)
 		r.Get("/admin/login", h.LoginForm)
 		r.Post("/admin/login", h.Login)
+
+		// Viewer password prompt (for protected pages)
+		r.Get("/auth/viewer", h.ViewerPrompt)
+		r.Post("/auth/viewer", h.ViewerAuth)
 	})
 
 	// Admin routes (CSRF + session auth required)
@@ -80,6 +88,7 @@ func main() {
 		r.Post("/admin/upload", h.Upload)
 		r.Delete("/admin/delete/*", h.Delete)
 		r.Post("/admin/token", h.TokenGenerate)
+		r.Post("/admin/visibility", h.SetVisibility)
 		r.Post("/admin/logout", h.Logout)
 	})
 

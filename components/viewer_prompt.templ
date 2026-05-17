@@ -1,0 +1,41 @@
+package components
+
+templ viewerPasswordPrompt(nextPath string, csrfToken string, errorMsg string) {
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>Password Required — Shelf</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com"/>
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+		<link rel="stylesheet" href="/static/css/tailwind.css"/>
+		<script>
+			(function(){var t=localStorage.getItem('shelf-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})();
+		</script>
+	</head>
+	<body class="min-h-screen bg-surface-soft text-body font-sans antialiased flex items-center justify-center">
+		<div class="w-full max-w-sm mx-auto px-6">
+			<div class="text-center mb-8">
+				<h1 class="text-2xl font-medium text-ink mb-2">🔒 Protected Page</h1>
+				<p class="text-sm text-muted">This page requires a password to view.</p>
+			</div>
+			<div class="bg-canvas border border-hairline rounded-lg p-6">
+				if errorMsg != "" {
+					<div class="text-sm text-error bg-coral/10 rounded-md px-4 py-3 mb-4">
+						{ errorMsg }
+					</div>
+				}
+				<form method="post" action="/auth/viewer" class="space-y-4">
+					<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
+					<input type="hidden" name="next" value={ nextPath }/>
+					<input type="password" name="password" placeholder="Enter password" autofocus="" class="w-full h-11 px-4 text-sm bg-canvas border border-hairline rounded-sm focus:border-info-border focus:outline-none"/>
+					<button type="submit" class="w-full bg-primary text-on-dark font-medium rounded-lg px-6 py-3 text-sm active:bg-primary-active">Continue</button>
+				</form>
+			</div>
+		</div>
+	</body>
+	</html>
+}

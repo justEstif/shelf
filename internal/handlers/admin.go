@@ -83,7 +83,8 @@ func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 		log.Printf("walk failed: %v", err)
 	}
 	token := auth.GetToken(h.cfg.DataDir)
-	if err := components.AdminPage(entries, token, csrf.Token(r), "").Render(r.Context(), w); err != nil {
+	visibility := h.ms.GetAll()
+	if err := components.AdminPage(entries, token, csrf.Token(r), "", visibility).Render(r.Context(), w); err != nil {
 		log.Printf("render admin page: %v", err)
 	}
 }
@@ -103,7 +104,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("walk failed: %v", err)
 		}
-		if err := components.FileListPartial(entries, csrf.Token(r), "No files selected").Render(r.Context(), w); err != nil {
+		if err := components.FileListPartial(entries, csrf.Token(r), "No files selected", h.ms.GetAll()).Render(r.Context(), w); err != nil {
 			log.Printf("render file list: %v", err)
 		}
 		return
@@ -116,7 +117,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("walk failed: %v", err)
 	}
-	if err := components.FileListPartial(entries, csrf.Token(r), errMsg).Render(r.Context(), w); err != nil {
+	if err := components.FileListPartial(entries, csrf.Token(r), errMsg, h.ms.GetAll()).Render(r.Context(), w); err != nil {
 		log.Printf("render file list: %v", err)
 	}
 }
@@ -145,7 +146,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("walk failed: %v", err)
 	}
-	if err := components.FileListPartial(entries, csrf.Token(r), "").Render(r.Context(), w); err != nil {
+	if err := components.FileListPartial(entries, csrf.Token(r), "", h.ms.GetAll()).Render(r.Context(), w); err != nil {
 		log.Printf("render file list: %v", err)
 	}
 }
@@ -244,4 +245,38 @@ func jsonError(w http.ResponseWriter, msg string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+// SetVisibility updates the visibility of a file/folder via HTMX.
+func (h *Handler) SetVisibility(w http.ResponseWriter, r *http.Request) {
+	pathParam := r.FormValue("path")
+	visibility := r.FormValue("visibility")
+
+	if pathParam == "" {
+		http.Error(w, "No path specified", http.StatusBadRequest)
+		return
+	}
+
+	// Validate visibility value
+	if visibility != storage.VisibilityPublic && visibility != storage.VisibilityPrivate && visibility != storage.VisibilityProtected {
+		http.Error(w, "Invalid visibility", http.StatusBadRequest)
+		return
+	}
+
+	// Verify path exists
+	fullPath, err := storage.SanitizePath(h.cfg.PagesDir, pathParam)
+	if err != nil || !storage.Exists(fullPath) {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	if err := h.ms.SetVisibility(pathParam, visibility); err != nil {
+		http.Error(w, "Failed to update", http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated visibility badge
+	if err := components.VisibilityBadge(pathParam, visibility, csrf.Token(r)).Render(r.Context(), w); err != nil {
+		log.Printf("render visibility badge: %v", err)
+	}
 }

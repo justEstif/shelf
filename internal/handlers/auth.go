@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gorilla/csrf"
@@ -16,7 +17,9 @@ func (h *Handler) LoginForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin", http.StatusSeeOther)
 		return
 	}
-	_ = components.LoginPage(csrf.Token(r), "").Render(r.Context(), w)
+	if err := components.LoginPage(csrf.Token(r), "").Render(r.Context(), w); err != nil {
+		log.Printf("render login: %v", err)
+	}
 }
 
 // Login validates the password and creates a session.
@@ -24,7 +27,9 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	if !auth.CheckPassword(password, h.cfg.Password) {
-		_ = components.LoginPage(csrf.Token(r), "Invalid password").Render(r.Context(), w)
+		if err := components.LoginPage(csrf.Token(r), "Invalid password").Render(r.Context(), w); err != nil {
+			log.Printf("render login: %v", err)
+		}
 		return
 	}
 

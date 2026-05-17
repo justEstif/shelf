@@ -101,27 +101,33 @@ templ fileListPartial(entries []storage.Entry, csrfToken string, errMsg string) 
 			<p class="text-base-content/50 text-sm py-4">No files uploaded yet.</p>
 		}
 		for _, entry := range entries {
-			if !entry.IsDir {
-				<div class="flex items-center justify-between p-3 bg-base-200 rounded-lg mb-2">
-					<div class="flex items-center gap-3">
+			<div class="flex items-center justify-between p-3 bg-base-200 rounded-lg mb-2">
+				<div class="flex items-center gap-3">
+					if entry.IsDir {
+						<span>📁</span>
+					} else {
 						<span>📄</span>
-						<div>
-							<span class="font-mono text-sm">{ entry.Path }</span>
+					}
+					<div>
+						<span class="font-mono text-sm">{ entry.Path }</span>
+						if entry.IsDir {
+							<span class="text-xs text-base-content/50 ml-2">folder</span>
+						} else {
 							<span class="text-xs text-base-content/50 ml-2">{ storage.FormatFileSize(entry.Size) }</span>
-						</div>
-					</div>
-					<div class="flex gap-2">
-						<a href={ templ.SafeURL("/" + entry.Path) } class="btn btn-ghost btn-xs" target="_blank">View</a>
-						<button class="btn btn-ghost btn-xs text-error"
-							hx-delete={ "/admin/delete/" + entry.Path }
-							hx-target="#file-list"
-							hx-swap="outerHTML"
-							hx-headers={ `{ "X-CSRF-Token": "` + csrfToken + `" }` }>
-							Delete
-						</button>
+						}
 					</div>
 				</div>
-			}
+				<div class="flex gap-2">
+					<a href={ templ.SafeURL("/" + entry.Path) } class="btn btn-ghost btn-xs" target="_blank">View</a>
+					<button class="btn btn-ghost btn-xs text-error"
+						hx-delete={ "/admin/delete/" + entry.Path }
+						hx-target="#file-list"
+						hx-swap="outerHTML"
+						hx-headers={ `{ "X-CSRF-Token": "` + csrfToken + `" }` }>
+					Delete
+					</button>
+				</div>
+			</div>
 		}
 	</div>
 }

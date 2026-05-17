@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,11 +18,74 @@ import (
 	"github.com/justestif/shelf/internal/storage"
 )
 
+// saveResult holds the result of a successful file save.
+type saveResult struct {
+	Filename string
+	RelPath  string
+}
+
+// saveUploadedFiles writes uploaded files to disk under the pages directory.
+// Returns successfully saved files and any per-file error messages.
+func (h *Handler) saveUploadedFiles(folder string, files []*multipart.FileHeader) ([]saveResult, []string) {
+	var saved []saveResult
+	var errors []string
+
+	for _, fh := range files {
+		clean, err := storage.SanitizePath(h.cfg.PagesDir, filepath.Join(folder, fh.Filename))
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("%s: invalid path", fh.Filename))
+			continue
+		}
+
+		if storage.Exists(clean) {
+			errors = append(errors, fmt.Sprintf("%s: already exists", fh.Filename))
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(clean), 0o755); err != nil {
+			errors = append(errors, fmt.Sprintf("%s: failed to create directory", fh.Filename))
+			continue
+		}
+
+		src, err := fh.Open()
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("%s: failed to read", fh.Filename))
+			continue
+		}
+		dst, err := os.Create(clean)
+		if err != nil {
+			src.Close()
+			errors = append(errors, fmt.Sprintf("%s: failed to create", fh.Filename))
+			continue
+		}
+		_, copyErr := io.Copy(dst, src)
+		src.Close()
+		dst.Close()
+		if copyErr != nil {
+			errors = append(errors, fmt.Sprintf("%s: failed to write", fh.Filename))
+			continue
+		}
+
+		rel, _ := filepath.Rel(h.cfg.PagesDir, clean)
+		saved = append(saved, saveResult{
+			Filename: fh.Filename,
+			RelPath:  filepath.ToSlash(rel),
+		})
+	}
+
+	return saved, errors
+}
+
 // Admin renders the admin dashboard.
 func (h *Handler) Admin(w http.ResponseWriter, r *http.Request) {
-	entries, _ := storage.Walk(h.cfg.PagesDir)
+	entries, err := storage.Walk(h.cfg.PagesDir)
+	if err != nil {
+		log.Printf("walk failed: %v", err)
+	}
 	token := auth.GetToken(h.cfg.DataDir)
-	_ = components.AdminPage(entries, token, csrf.Token(r), "").Render(r.Context(), w)
+	if err := components.AdminPage(entries, token, csrf.Token(r), "").Render(r.Context(), w); err != nil {
+		log.Printf("render admin page: %v", err)
+	}
 }
 
 // Upload handles HTMX file uploads. Returns an HTML partial on success.
@@ -34,65 +99,26 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	files := r.MultipartForm.File["files"]
 
 	if len(files) == 0 {
-		entries, _ := storage.Walk(h.cfg.PagesDir)
-		_ = components.FileListPartial(entries, csrf.Token(r), "No files selected").Render(r.Context(), w)
+		entries, err := storage.Walk(h.cfg.PagesDir)
+		if err != nil {
+			log.Printf("walk failed: %v", err)
+		}
+		if err := components.FileListPartial(entries, csrf.Token(r), "No files selected").Render(r.Context(), w); err != nil {
+			log.Printf("render file list: %v", err)
+		}
 		return
 	}
 
-	var errors []string
-	for _, fh := range files {
-		destDir := h.cfg.PagesDir
-		if folder != "" {
-			destDir = filepath.Join(destDir, folder)
-		}
-		destPath := filepath.Join(destDir, fh.Filename)
+	_, errs := h.saveUploadedFiles(folder, files)
+	errMsg := strings.Join(errs, "; ")
 
-		// Sanitize
-		clean, err := storage.SanitizePath(h.cfg.PagesDir, filepath.Join(folder, fh.Filename))
-		if err != nil {
-			errors = append(errors, fmt.Sprintf("%s: invalid path", fh.Filename))
-			continue
-		}
-		destPath = clean
-
-		// Check conflict
-		if storage.Exists(destPath) {
-			errors = append(errors, fmt.Sprintf("%s: already exists", fh.Filename))
-			continue
-		}
-
-		// Ensure parent directory exists
-		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-			errors = append(errors, fmt.Sprintf("%s: failed to create directory", fh.Filename))
-			continue
-		}
-
-		// Save file
-		src, err := fh.Open()
-		if err != nil {
-			errors = append(errors, fmt.Sprintf("%s: failed to read", fh.Filename))
-			continue
-		}
-		dst, err := os.Create(destPath)
-		if err != nil {
-			src.Close()
-			errors = append(errors, fmt.Sprintf("%s: failed to create", fh.Filename))
-			continue
-		}
-		if _, err := io.Copy(dst, src); err != nil {
-			src.Close()
-			dst.Close()
-			errors = append(errors, fmt.Sprintf("%s: failed to write", fh.Filename))
-			continue
-		}
-		src.Close()
-		dst.Close()
+	entries, err := storage.Walk(h.cfg.PagesDir)
+	if err != nil {
+		log.Printf("walk failed: %v", err)
 	}
-
-	errMsg := strings.Join(errors, "; ")
-	var entries []storage.Entry
-	entries, _ = storage.Walk(h.cfg.PagesDir)
-	_ = components.FileListPartial(entries, csrf.Token(r), errMsg).Render(r.Context(), w)
+	if err := components.FileListPartial(entries, csrf.Token(r), errMsg).Render(r.Context(), w); err != nil {
+		log.Printf("render file list: %v", err)
+	}
 }
 
 // Delete handles HTMX delete requests. Returns the updated file list partial.
@@ -115,9 +141,13 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var entries []storage.Entry
-	entries, _ = storage.Walk(h.cfg.PagesDir)
-	_ = components.FileListPartial(entries, csrf.Token(r), "").Render(r.Context(), w)
+	entries, err := storage.Walk(h.cfg.PagesDir)
+	if err != nil {
+		log.Printf("walk failed: %v", err)
+	}
+	if err := components.FileListPartial(entries, csrf.Token(r), "").Render(r.Context(), w); err != nil {
+		log.Printf("render file list: %v", err)
+	}
 }
 
 // TokenGenerate creates or regenerates the API token. Returns the token display partial.
@@ -127,7 +157,9 @@ func (h *Handler) TokenGenerate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
 	}
-	_ = components.TokenPartial(token).Render(r.Context(), w)
+	if err := components.TokenPartial(token).Render(r.Context(), w); err != nil {
+		log.Printf("render token partial: %v", err)
+	}
 }
 
 // --- API Handlers (JSON) ---
@@ -161,61 +193,25 @@ func (h *Handler) APIUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	saved, errs := h.saveUploadedFiles(folder, files)
+
 	type result struct {
 		Path string `json:"path"`
 		URL  string `json:"url"`
 	}
 
 	var uploaded []result
-	var errors []string
-
-	for _, fh := range files {
-		clean, err := storage.SanitizePath(h.cfg.PagesDir, filepath.Join(folder, fh.Filename))
-		if err != nil {
-			errors = append(errors, fmt.Sprintf("%s: invalid path", fh.Filename))
-			continue
-		}
-
-		if storage.Exists(clean) {
-			errors = append(errors, fmt.Sprintf("%s: already exists", fh.Filename))
-			continue
-		}
-
-		if err := os.MkdirAll(filepath.Dir(clean), 0755); err != nil {
-			errors = append(errors, fmt.Sprintf("%s: mkdir failed", fh.Filename))
-			continue
-		}
-
-		src, err := fh.Open()
-		if err != nil {
-			errors = append(errors, fmt.Sprintf("%s: read failed", fh.Filename))
-			continue
-		}
-		dst, err := os.Create(clean)
-		if err != nil {
-			src.Close()
-			errors = append(errors, fmt.Sprintf("%s: create failed", fh.Filename))
-			continue
-		}
-		_, copyErr := io.Copy(dst, src)
-		src.Close()
-		dst.Close()
-		if copyErr != nil {
-			errors = append(errors, fmt.Sprintf("%s: write failed", fh.Filename))
-			continue
-		}
-
-		rel, _ := filepath.Rel(h.cfg.PagesDir, clean)
+	for _, s := range saved {
 		uploaded = append(uploaded, result{
-			Path: filepath.ToSlash(rel),
-			URL:  h.cfg.BaseURL + "/" + filepath.ToSlash(rel),
+			Path: s.RelPath,
+			URL:  h.cfg.BaseURL + "/" + s.RelPath,
 		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"uploaded": uploaded,
-		"errors":   errors,
+		"errors":   errs,
 	})
 }
 

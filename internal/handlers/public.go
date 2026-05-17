@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -36,7 +37,9 @@ func (h *Handler) PublicServe(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to list files", http.StatusInternalServerError)
 			return
 		}
-		_ = components.PublicIndex(entries, "").Render(r.Context(), w)
+		if err := components.PublicIndex(entries, "").Render(r.Context(), w); err != nil {
+			log.Printf("render index: %v", err)
+		}
 		return
 	}
 
@@ -65,7 +68,9 @@ func (h *Handler) PublicServe(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasSuffix(prefix, "/") {
 			prefix += "/"
 		}
-		_ = components.PublicIndex(entries, prefix).Render(r.Context(), w)
+		if err := components.PublicIndex(entries, prefix).Render(r.Context(), w); err != nil {
+			log.Printf("render index: %v", err)
+		}
 		return
 	}
 

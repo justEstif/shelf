@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -22,10 +23,10 @@ func main() {
 	}
 
 	// Ensure storage directories exist
-	if err := os.MkdirAll(cfg.PagesDir, 0755); err != nil {
+	if err := os.MkdirAll(cfg.PagesDir, 0o755); err != nil {
 		log.Fatalf("Failed to create pages directory: %v", err)
 	}
-	if err := os.MkdirAll(cfg.DataDir, 0755); err != nil {
+	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
 		log.Fatalf("Failed to create data directory: %v", err)
 	}
 
@@ -54,7 +55,11 @@ func main() {
 	csrfMw := customMiddleware.SetupCSRF(csrfKey, cfg.IsProduction(), cfg.BaseURL)
 
 	// Static files (CSS — no CSRF needed)
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	staticDir, err := filepath.Abs("static")
+	if err != nil {
+		log.Fatalf("Failed to resolve static directory: %v", err)
+	}
+	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
 
 	// Login routes (CSRF, no auth required) — must be before the wildcard
 	r.Group(func(r chi.Router) {

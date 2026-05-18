@@ -133,11 +133,13 @@ templ fileListPartial(entries []storage.Entry, csrfToken string, errMsg string, 
 						</div>
 						<div class="flex gap-3 items-center">
 							@visibilityBadge(entry.Path, visibility[entry.Path], csrfToken)
+							<button class="text-xs text-muted" onclick="navigator.clipboard.writeText(window.location.origin + '/' + '{ entry.Path }')">Copy link</button>
 							<a href={ templ.SafeURL("/" + entry.Path) } class="text-xs text-link" target="_blank">View</a>
 							<button class="text-xs text-error"
 								hx-delete={ "/admin/delete/" + entry.Path }
 								hx-target="#file-list"
 								hx-swap="outerHTML"
+								hx-confirm={ "Delete " + entry.Path + "?" }
 								hx-headers={ `{ "X-CSRF-Token": "` + csrfToken + `" }` }>
 							Delete
 							</button>
@@ -173,7 +175,9 @@ templ visibilityBadge(path string, visibility string, csrfToken string) {
 		<form hx-post="/admin/visibility" hx-target="this" hx-swap="outerHTML" class="inline-flex">
 			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
 			<input type="hidden" name="path" value={ path }/>
-			<select name="visibility" onchange="htmx.trigger(this.closest('form'), 'submit')"
+			<select name="visibility"
+				onchange="if(confirm('Change visibility to ' + this.value + '?')) htmx.trigger(this.closest('form'), 'submit'); else this.value = this.dataset.current;"
+				data-current={ visibility }
 				class="text-xs bg-canvas border border-hairline rounded-sm px-1.5 py-0.5 text-body focus:outline-none focus:border-info-border">
 				<option value="public" selected={ visibility == "public" }>Public</option>
 				<option value="private" selected={ visibility == "private" }>Private</option>

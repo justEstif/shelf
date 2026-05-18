@@ -34,11 +34,11 @@ func SetupCSRF(key []byte, secure bool, baseURL string) func(http.Handler) http.
 			http.Error(w, reason.Error(), http.StatusForbidden)
 		})),
 	}
-	if !secure {
-		u, err := url.Parse(baseURL)
-		if err == nil && u.Host != "" {
-			opts = append(opts, csrf.TrustedOrigins([]string{u.Host}))
-		}
+
+	// Trust the configured host (needed when TLS is terminated upstream, e.g. Cloudflare)
+	u, err := url.Parse(baseURL)
+	if err == nil && u.Host != "" {
+		opts = append(opts, csrf.TrustedOrigins([]string{u.Host}))
 	}
 	return csrf.Protect(key, opts...)
 }

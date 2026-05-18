@@ -13,8 +13,8 @@ type Config struct {
 	DataDir        string
 	BaseURL        string
 	CSRFKey        string
-	MaxFileSize    int64 // bytes, default 500 MB
-	MaxVolumeSize  int64 // bytes, default 1 GB
+	MaxFileSize    int64 // MB, default 20
+	MaxVolumeSize  int64 // MB, default 1024
 }
 
 func Load() *Config {
@@ -26,15 +26,15 @@ func Load() *Config {
 		DataDir:        getEnv("SHELF_DATA_DIR", "./data"),
 		BaseURL:        getEnv("SHELF_BASE_URL", "http://localhost:3000"),
 		CSRFKey:        os.Getenv("CSRF_KEY"),
-		MaxFileSize:    getEnvInt("SHELF_MAX_FILE_SIZE", 500),    // MB
+		MaxFileSize:    getEnvInt("SHELF_MAX_FILE_SIZE", 20),     // MB
 		MaxVolumeSize:  getEnvInt("SHELF_MAX_VOLUME_SIZE", 1024), // MB
 	}
 }
 
 const mb = 1024 * 1024
 
-func (c *Config) MaxFileSizeBytes() int64    { return c.MaxFileSize * mb }
-func (c *Config) MaxVolumeSizeBytes() int64  { return c.MaxVolumeSize * mb }
+func (c *Config) MaxFileSizeBytes() int64   { return c.MaxFileSize * mb }
+func (c *Config) MaxVolumeSizeBytes() int64 { return c.MaxVolumeSize * mb }
 
 func (c *Config) IsProduction() bool {
 	return c.BaseURL != "" && c.BaseURL != "http://localhost:3000"

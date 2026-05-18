@@ -139,10 +139,7 @@ Branching SVG tree, centered root. Click node to expand/collapse. Submit sends t
 ### Timeline / roadmap
 Gantt-style: swim lanes per team/area, bars proportional to duration, dependency arrows. Click milestone to open detail in Popover. Export as markdown table.
 
-### Local-first app
-Use `templates/local-first-app/` as the starting point — copy it, don't reconstruct from scratch. Architecture: SQLite via PGlite + OPFS. Worker thread handles all DB ops via `{ action, payload }` postMessage; Alpine wires UI to worker. Features already scaffolded: timer, manual entry, period filter, project summary, entries list, edit dialog, CSV/JSON export, toast notifications.
-
-## GitHub Pages delivery
+## Pages delivery
 
 For a shareable static lab:
 - `index.html` in repo root (or `/docs` folder)

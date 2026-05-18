@@ -1,6 +1,6 @@
 ---
 name: playground
-description: "Create polished local-first HTML playgrounds and micro-apps for exploration, workshops, demos, and manager-ready artifacts. Use when the user asks for a playground, interactive HTML artifact, static GitHub Pages lab, self-guided exercise, visual explorer, copy/paste AI workflow, slide deck, diagram, data explorer, code review artifact, comparison matrix, timeline, throwaway editor, brainstorm grid, mind map, design token showcase, spec/planning doc, or HTML instead of markdown/slides. Keywords: playground, micro-app, static HTML, GitHub Pages, Alpine, Tailwind CDN, Popover API, View Transitions, local-first, copy prompt, export markdown, slide deck, kanban, ERD, mind map, data explorer, spec, implementation plan."
+description: "Create polished HTML playgrounds and micro-apps for exploration, workshops, demos, and manager-ready artifacts. Use when the user asks for a playground, interactive HTML artifact, static GitHub Pages lab, self-guided exercise, visual explorer, copy/paste AI workflow, slide deck, diagram, data explorer, code review artifact, comparison matrix, timeline, throwaway editor, brainstorm grid, mind map, design token showcase, spec/planning doc, or HTML instead of markdown/slides. Keywords: playground, micro-app, static HTML, GitHub Pages, Alpine, Tailwind CDN, Popover API, View Transitions, copy prompt, export markdown, slide deck, kanban, ERD, mind map, data explorer, spec, implementation plan."
 ---
 
 # Playground

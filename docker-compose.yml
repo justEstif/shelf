@@ -1,0 +1,18 @@
+services:
+  shelf:
+    image: ghcr.io/justestif/shelf:latest
+    ports:
+      - "3000:3000"
+    environment:
+      SHELF_PASSWORD: changeme
+      CSRF_KEY: changeme-to-32-bytes-exactly-please
+      SHELF_BASE_URL: http://localhost:3000
+      # SHELF_VIEWER_PASSWORD: optional-password-for-protected-pages
+    volumes:
+      - shelf-pages:/shelf/pages
+      - shelf-data:/shelf/data
+    restart: unless-stopped
+
+volumes:
+  shelf-pages:
+  shelf-data:

@@ -135,21 +135,21 @@ templ fileListPartial(entries []storage.Entry, csrfToken string, errMsg string, 
 		} else {
 			<div class="bg-canvas border border-hairline rounded-lg divide-y divide-hairline">
 				for _, entry := range entries {
-					<div class="flex items-center justify-between px-4 py-3">
-						<div class="flex items-center gap-3">
+					<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-3">
+						<div class="flex items-center gap-3 min-w-0">
 							if entry.IsDir {
-								<span class="text-muted">📁</span>
+								<span class="text-muted shrink-0">📁</span>
 							} else {
-								<span class="text-muted">📄</span>
+								<span class="text-muted shrink-0">📄</span>
 							}
-							<div>
-								<span class="font-mono text-sm text-ink">{ entry.Path }</span>
-								<span class="text-xs text-muted ml-2">{ storage.FormatFileSize(entry.Size) }</span>
+							<div class="min-w-0">
+								<span class="font-mono text-sm text-ink truncate block">{ entry.Path }</span>
+								<span class="text-xs text-muted">{ storage.FormatFileSize(entry.Size) }</span>
 							</div>
 						</div>
-						<div class="flex gap-3 items-center">
+						<div class="flex gap-3 items-center flex-wrap">
 							@visibilityBadge(entry.Path, visibility[entry.Path], csrfToken)
-<a href={ templ.SafeURL("/" + entry.Path) } class="text-xs text-link" target="_blank">View</a>
+							<a href={ templ.SafeURL("/" + entry.Path) } class="text-xs text-link" target="_blank">View</a>
 							<button class="text-xs text-error"
 								hx-delete={ "/admin/delete/" + entry.Path }
 								hx-target="#file-list"

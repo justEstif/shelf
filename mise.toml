@@ -1,7 +1,7 @@
 [tools]
 go = "latest"
 "go:github.com/a-h/templ/cmd/templ" = "latest"
-"go:github.com/air-verse/air" = "latest"
+"go:github.com/justestif/shelf-cli" = "latest"
 
 [env]
 PORT = "3000"

@@ -80,6 +80,22 @@ templ adminPage(entries []storage.Entry, token string, csrfToken string, uploadM
 			</div>
 		</div>
 
+		<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+		<script>
+			document.addEventListener("htmx:confirm", function(e) {
+				if (!e.detail.question) return;
+				e.preventDefault();
+				Swal.fire({
+					title: "Confirm",
+					text: e.detail.question,
+					showCancelButton: true,
+					confirmButtonText: "Confirm",
+					cancelButtonText: "Cancel",
+				}).then(function(result) {
+					if (result.isConfirmed) e.detail.issueRequest(true);
+				});
+			});
+		</script>
 		<!-- Drag & drop JS -->
 		<script>
 			const dropZone = document.getElementById('drop-zone');
@@ -176,7 +192,7 @@ templ visibilityBadge(path string, visibility string, csrfToken string) {
 			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
 			<input type="hidden" name="path" value={ path }/>
 			<select name="visibility"
-				onchange="if(confirm('Change visibility to ' + this.value + '?')) htmx.trigger(this.closest('form'), 'submit'); else this.value = this.dataset.current;"
+				onchange="var sel=this; Swal.fire({title:'Change visibility',text:'Set to '+this.value+'?',showCancelButton:true,confirmButtonText:'Confirm',cancelButtonText:'Cancel'}).then(function(r){ if(r.isConfirmed) htmx.trigger(sel.closest('form'),'submit'); else sel.value=sel.dataset.current; });"
 				data-current={ visibility }
 				class="text-xs bg-canvas border border-hairline rounded-sm px-1.5 py-0.5 text-body focus:outline-none focus:border-info-border">
 				<option value="public" selected={ visibility == "public" }>Public</option>

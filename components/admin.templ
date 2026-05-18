@@ -170,7 +170,7 @@ templ visibilityBadge(path string, visibility string, csrfToken string) {
 		} else if visibility == "protected" {
 			<span class="text-xs px-2 py-0.5 rounded-sm bg-coral text-on-dark">Protected</span>
 		}
-		<form method="post" action="/admin/visibility" class="inline-flex">
+		<form hx-post="/admin/visibility" hx-target="this" hx-swap="outerHTML" class="inline-flex">
 			<input type="hidden" name="gorilla.csrf.Token" value={ csrfToken }/>
 			<input type="hidden" name="path" value={ path }/>
 			<select name="visibility" onchange="htmx.trigger(this.closest('form'), 'submit')"

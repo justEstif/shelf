@@ -29,5 +29,4 @@ FROM gcr.io/distroless/static-debian12
 
 COPY --from=build /bin/shelf /bin/shelf
 
-EXPOSE 3000
 ENTRYPOINT ["/bin/shelf"]

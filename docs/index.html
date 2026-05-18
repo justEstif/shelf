@@ -68,6 +68,7 @@
     <div class="max-w-screen-xl mx-auto px-6 h-full flex items-center justify-between">
       <a href="https://github.com/justEstif/shelf" class="text-xl font-medium text-ink">📚 Shelf</a>
       <div class="flex items-center gap-4">
+        <a href="https://github.com/justEstif/shelf-cli" class="text-sm text-body">CLI</a>
         <a href="https://github.com/justEstif/shelf" class="text-sm text-body">GitHub</a>
         <button
           @click="document.documentElement.classList.toggle('dark');localStorage.setItem('shelf-theme',document.documentElement.classList.contains('dark')?'dark':'light')"
@@ -91,12 +92,7 @@
       </p>
       <div class="mt-8 flex items-center gap-4">
         <a href="https://github.com/justEstif/shelf" class="bg-primary text-on-dark font-medium rounded-lg px-6 py-3 text-sm active:opacity-90">Get started</a>
-        <button
-          @click="navigator.clipboard.writeText('docker run -p 3000:3000 -e SHELF_PASSWORD=secret -e CSRF_KEY=this-is-exactly-32-bytes-long-x! -v shelf-pages:/shelf/pages -v shelf-data:/shelf/data ghcr.io/justestif/shelf'); copied = true; setTimeout(() => copied = false, 2000)"
-          class="bg-canvas border border-hairline text-ink font-medium rounded-lg px-6 py-3 text-sm active:bg-surface-soft">
-          <span x-show="!copied">Copy docker run</span>
-          <span x-show="copied">Copied!</span>
-        </button>
+        <a href="https://github.com/justEstif/shelf-cli" class="bg-canvas border border-hairline text-ink font-medium rounded-lg px-6 py-3 text-sm active:bg-surface-soft">CLI</a>
       </div>
     </div>
   </section>

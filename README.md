@@ -110,6 +110,25 @@ mise run build
 
 The binary has all static files embedded. Only needs env vars and the pages/data directories at runtime.
 
+## CLI
+
+Install the companion CLI:
+
+```
+go install github.com/justestif/shelf-cli@latest
+```
+
+```bash
+export SHELF_API_TOKEN=your-token
+
+shelf upload report.html -v protected
+shelf ls
+shelf rm old-file.html
+shelf open report.html
+```
+
+See [justEstif/shelf-cli](https://github.com/justEstif/shelf-cli) for full docs.
+
 ## API
 
 Authenticate with `Authorization: Bearer <token>`. Generate a token from the admin dashboard.

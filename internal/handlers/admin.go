@@ -273,26 +273,8 @@ func (h *Handler) SetVisibility(w http.ResponseWriter, r *http.Request) {
 	pathParam := r.FormValue("path")
 	visibility := r.FormValue("visibility")
 
-	if pathParam == "" {
-		http.Error(w, "No path specified", http.StatusBadRequest)
-		return
-	}
-
-	// Validate visibility value
-	if visibility != storage.VisibilityPublic && visibility != storage.VisibilityPrivate && visibility != storage.VisibilityProtected {
-		http.Error(w, "Invalid visibility", http.StatusBadRequest)
-		return
-	}
-
-	// Verify path exists
-	fullPath, err := storage.SanitizePath(h.cfg.PagesDir, pathParam)
-	if err != nil || !storage.Exists(fullPath) {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-
-	if err := h.ms.SetVisibility(pathParam, visibility); err != nil {
-		http.Error(w, "Failed to update", http.StatusInternalServerError)
+	if err := h.setVis(pathParam, visibility); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -300,4 +282,32 @@ func (h *Handler) SetVisibility(w http.ResponseWriter, r *http.Request) {
 	if err := components.VisibilityBadge(pathParam, visibility, csrf.Token(r)).Render(r.Context(), w); err != nil {
 		log.Printf("render visibility badge: %v", err)
 	}
+}
+
+// APISetVisibility updates visibility via the JSON API.
+func (h *Handler) APISetVisibility(w http.ResponseWriter, r *http.Request) {
+	pathParam := r.FormValue("path")
+	visibility := r.FormValue("visibility")
+
+	if err := h.setVis(pathParam, visibility); err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"path": pathParam, "visibility": visibility})
+}
+
+func (h *Handler) setVis(pathParam, visibility string) error {
+	if pathParam == "" {
+		return fmt.Errorf("no path specified")
+	}
+	if visibility != storage.VisibilityPublic && visibility != storage.VisibilityPrivate && visibility != storage.VisibilityProtected {
+		return fmt.Errorf("invalid visibility")
+	}
+	fullPath, err := storage.SanitizePath(h.cfg.PagesDir, pathParam)
+	if err != nil || !storage.Exists(fullPath) {
+		return fmt.Errorf("not found")
+	}
+	return h.ms.SetVisibility(pathParam, visibility)
 }

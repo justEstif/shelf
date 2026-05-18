@@ -98,6 +98,7 @@ func main() {
 		r.Get("/files", h.APIListFiles)
 		r.Post("/upload", h.APIUpload)
 		r.Delete("/files/*", h.APIDelete)
+		r.Post("/visibility", h.APISetVisibility)
 	})
 
 	// Public routes (GET only, catch-all — must be last)
